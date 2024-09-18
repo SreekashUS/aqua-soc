@@ -5,6 +5,9 @@
 `Note`: Just a decoder unit, complete microarchitecture written somewhere else
 */
 
+`ifndef RV32IDECODER_H
+`define RV32IDECODER_H
+
 `define REG_COUNT 5
 `define XLEN 32
 
@@ -40,13 +43,6 @@ module rv32iDecoder
 	,output wire					isJALR
 	,output wire					isBranch
 	,output wire					isSysCall
-
-	//memory accesses
-	,output reg [`XLEN-1:0] 		memAddr 		
-	,output reg [`XLEN-1:0] 		memWData 		
-	,input wire [`XLEN-1:0] 		memRData
-	,output reg [3:0]				memWMask
-	,output reg 					memRStrb
 );
 
 	//Opcodes unpriv RV32I-20240411 documentation
@@ -56,7 +52,7 @@ module rv32iDecoder
 	localparam MemOrder_Opcode	=5'b00011;
 	localparam AluReg_Opcode	=5'b01100;
 	localparam AluImm_Opcode	=5'b00100;
-	localparam Lui_Opcode 		=5'b01101;	
+	localparam Lui_Opcode 		=5'b01101;
 	localparam Auipc_Opcode		=5'b00101;
 	localparam Jal_Opcode		=5'b11011;
 	localparam Jalr_Opcode		=5'b11001;
@@ -91,3 +87,5 @@ module rv32iDecoder
 	//shift amount for shifter
 	assign shamt 		= (instrIn[24:20]);
 endmodule
+
+`endif //RV32IDECODER_H
