@@ -1,3 +1,11 @@
+# misc folders
 misc
+
+# simulation files and temporary files
 *.vcd
 temp.txt
+
+# quartus files and folders
+proj
+*Synth.cmd
+*Synth.tcl
