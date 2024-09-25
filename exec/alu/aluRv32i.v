@@ -2,7 +2,7 @@
 `define ALURV32I_H
 
 /*
-intMain unit:
+aluRv32i unit:
 	- performs arithmetic operations (from register file and immediates)
 	- performs logical operations
 	- performs shift operations
