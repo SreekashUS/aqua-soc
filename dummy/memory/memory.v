@@ -57,36 +57,58 @@ module memory
 	reg [DATA_W-1:0] memory [ADDR_W-1:0];
 	`endif
 
+	//state machine model
+	reg [1:0] memState;
+
+	localparam MEM_IDLE=0;
+	localparam MEM_BUSY=1;
+	localparam MEM_READY=2;
+
 	always @(posedge clk,posedge reset)
 	begin
 		if(reset)
 		begin
 			memBusy=0;
 			memDataOut=0;
+			memState=MEM_IDLE;
 		end
 		else
 		begin
-			if(~memBusy && req)
-			begin
-				if(wr)
+			case(memState)
+				MEM_IDLE:
 				begin
-					memory[memAddr]=memDataIn;
-					memBusy=1;
-				`ifdef USE_MEM_LATENCY
-					#(MEM_WR_LATENCY*`MEM_CLOCK_PERIOD);
-				`endif
-					memBusy=0;
+					if(req)
+					begin
+						memState=MEM_BUSY;
+						memBusy=1;
+					end
 				end
-				else
+				MEM_BUSY:
 				begin
-					memDataOut=memory[memAddr];
-					memBusy=1;
-				`ifdef USE_MEM_LATENCY
-					#(MEM_RD_LATENCY*`MEM_CLOCK_PERIOD);
-				`endif
+					if(wr)
+					begin
+						memory[memAddr]=memDataIn;
+						`ifdef USE_MEM_LATENCY
+							#(MEM_WR_LATENCY*`MEM_CLOCK_PERIOD);
+						`endif
+					end
+					else
+					begin
+						`ifdef USE_MEM_LATENCY
+							#(MEM_RD_LATENCY*`MEM_CLOCK_PERIOD);
+						`endif	
+						memDataOut=memory[memAddr];
+					end
 					memBusy=0;
+					memState=MEM_READY;
 				end
-			end
+				MEM_READY:
+				begin
+					memState=MEM_IDLE;
+				end
+				default:
+					memState=MEM_IDLE;
+			endcase
 		end
 	end
 endmodule

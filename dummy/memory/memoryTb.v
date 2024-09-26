@@ -6,8 +6,8 @@
 `define IVERILOG
 
 //Define memory access latencies
-`define MEM_WR_LATENCY 5
-`define MEM_RD_LATENCY 5
+`define MEM_WR_LATENCY 1
+`define MEM_RD_LATENCY 1
 
 `include "memory.v"
 
@@ -26,13 +26,24 @@ module memoryTb;
 
 	memory memory_inst(.*);
 
+	reg writePhase=1;
+
 	always #`MEM_CLOCK_PERIOD_BY2 clk<=~clk;
 
+	always @(negedge clk)
+	begin
+		//request pulse
+		req=writePhase? $random:1;
+		#(`MEM_CLOCK_PERIOD);
+		req=0;
+	end
+
 	integer i;
+	real delay;
 	initial
 	begin
-		#1 reset=1;
-		#10 reset=0;
+		reset=1;
+		#(`MEM_CLOCK_PERIOD*2) reset=0;
 
 		//Write randomized
 		for(i=0;i<15;i=i+1)
@@ -41,32 +52,29 @@ module memoryTb;
 			memDataIn=$random;
 			wr=1;
 
-			//request pulse
-			req=$random;
-			#(`MEM_CLOCK_PERIOD);
-			req=0;
-
-			//Random read latencies
-			if($random)
-				#(`MEM_WR_LATENCY*(`MEM_CLOCK_PERIOD*0.5));
-			else
-				#(`MEM_WR_LATENCY*(`MEM_CLOCK_PERIOD*2));
-
+			//Random write latencies
+			// if($random)
+			// 	#(`MEM_WR_LATENCY*(`MEM_CLOCK_PERIOD*0.5));
+			// else
+			// 	#(`MEM_WR_LATENCY*(`MEM_CLOCK_PERIOD*2));
+			#(`MEM_WR_LATENCY*(`MEM_CLOCK_PERIOD));
 		end
 		req=0;
+		writePhase=0;
 
+`ifndef READ_RANDOM
+		@(negedge memBusy);
+`endif
 		//Read randomized
 		for(i=0;i<15;i=i+1)
 		begin
 			memAddr=i;
 			wr=0;
-
-			//request pulse
-			req=1;
-			#(`MEM_CLOCK_PERIOD);
-			req=0;
-
+`ifdef READ_RANDOM
 			#(`MEM_RD_LATENCY*(`MEM_CLOCK_PERIOD));
+`else
+			@(negedge memBusy);
+`endif
 		end
 
 		// #1000;

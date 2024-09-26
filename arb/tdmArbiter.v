@@ -44,15 +44,14 @@ module tdmArbiter
 	//Memory interface
 	,output reg [ADDR_W-1:0] memAddr
 	,input wire memBusyIn
-	,input wire memIdle
 	,output reg memWr
-	,input wire memReady
 	,output reg [DDATA_W-1:0] memDataOut	//Sending to memory
 	,input wire [DDATA_W-1:0] memDataIn		//Received from memory
 );
 	reg counter; //0-instruction,1-data
+	reg requestSent;
 
-	assign memBusyOut=memBusyIn|~memIdle;
+	assign memBusyOut=memBusyIn;
 
 	always @(posedge clk,negedge reset)
 	begin
@@ -60,17 +59,39 @@ module tdmArbiter
 			counter<=0;
 		else
 		begin
-			if(~memBusyIn|memIdle)
+			if(~memBusyIn)
 			begin
 				if(~counter && reqI)
 				begin
 					memAddr<=memIAddr;
+					requestSent<=1;
 				end
 				else if(counter && reqD)
 				begin
 					memAddr<=memDAddr;
 					memDataOut<=memDData;
 					memWr<=wr;
+					requestSent<=1;
+				end
+			end
+			else
+			begin
+				if(requestSent)
+				begin
+					if(~memBusyIn)
+					begin
+						if(counter)
+						begin
+							memDReady<=1;
+							memIReady<=0;
+						end
+						else
+						begin
+							memIReady<=1;
+							memDReady<=0;
+						end
+						requestSent<=0;
+					end
 				end
 			end
 		end
