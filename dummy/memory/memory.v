@@ -1,65 +1,46 @@
-// `define COMPILE_CHECK
+`ifndef MEMORY_H
+`define MEMORY_H
 
-`ifdef COMPILE_CHECK
-	`define DUMMY
-	`define SIM
-	`define USE_MEM_LATENCY
-`endif
-
+/*
+Dummy memory module with parametrizable read/write latencies and ports
+*/
+//define this if dummy model is used
 `ifdef DUMMY
 
-	`ifndef MEMORY_H
-	`define MEMORY_H
-
-	`ifndef MEM_ADDR_SIZE
-		`define MEM_ADDR_SIZE 32
-	`endif
-
-	`ifndef MEM_WORD_SIZE
-		`define MEM_WORD_SIZE 8
-	`endif
-
-	`ifndef MEM_CLOCK_PERIOD
-		`define MEM_CLOCK_PERIOD 10		//default sim time unit - 1ns
-	`endif
-
-	`ifndef MEM_WR_LATENCY
-		`define MEM_WR_LATENCY 10
-	`endif
-
-	`ifndef MEM_RD_LATENCY
-		`define MEM_RD_LATENCY 10
+	`define COMPILE_CHECK
+	`ifdef COMPILE_CHECK
+		`define SIM
+		`define USE_MEM_LATENCY
 	`endif
 
 module memory 
 #(
-	parameter ADDR_W=`MEM_ADDR_SIZE
-	,parameter DATA_W=`MEM_WORD_SIZE
-	//10 units default
-	,parameter MEM_WR_LATENCY=`MEM_WR_LATENCY
-	,parameter MEM_RD_LATENCY=`MEM_RD_LATENCY
-	//Override from simulation macro file
-	,parameter MEM_CLOCK_PERIOD=`MEM_CLOCK_PERIOD
+	parameter MEM_ADDR_SIZE=32
+	,parameter MEM_WORD_SIZE=8
+	,parameter MEM_WR_LATENCY=2
+	,parameter MEM_RD_LATENCY=2
+	,parameter MEM_CLOCK_PERIOD=10
 )
 (
-	input wire [ADDR_W-1:0] memAddr
-	,input wire [DATA_W-1:0] memDataIn
-	,input wire wr
-	,input wire req
-
+	//memory request side
+	input wire [MEM_ADDR_SIZE-1:0] memAddr
+	,input wire [MEM_WORD_SIZE-1:0] memDataIn
+	,input wire memWr
+	,input wire memReq
+	//global signals for memory and requester
 	,input wire clk,reset
-
-	,output reg memBusy
-	,output reg [DATA_W-1:0] memDataOut
+	//status signals and output data for memory
+	,output reg memBusyOut
+	,output reg [MEM_WORD_SIZE-1:0] memDataOut
 );
-
+	//simulation purposes,
+	//otherwise connect to external modules (BRAM, physical DRAM etc)
 	`ifdef SIM
-	reg [DATA_W-1:0] memory [ADDR_W-1:0];
+		reg [MEM_WORD_SIZE-1:0] memory [MEM_ADDR_SIZE-1:0];
 	`endif
-
 	//state machine model
 	reg [1:0] memState;
-
+	//states
 	localparam MEM_IDLE=0;
 	localparam MEM_BUSY=1;
 	localparam MEM_READY=2;
@@ -68,7 +49,7 @@ module memory
 	begin
 		if(reset)
 		begin
-			memBusy=0;
+			memBusyOut=0;
 			memDataOut=0;
 			memState=MEM_IDLE;
 		end
@@ -77,29 +58,29 @@ module memory
 			case(memState)
 				MEM_IDLE:
 				begin
-					if(req)
+					if(memReq)
 					begin
 						memState=MEM_BUSY;
-						memBusy=1;
+						memBusyOut=1;
 					end
 				end
 				MEM_BUSY:
 				begin
-					if(wr)
+					if(memWr)
 					begin
 						memory[memAddr]=memDataIn;
 						`ifdef USE_MEM_LATENCY
-							#(MEM_WR_LATENCY*`MEM_CLOCK_PERIOD);
+							#(MEM_WR_LATENCY*MEM_CLOCK_PERIOD);
 						`endif
 					end
 					else
 					begin
 						`ifdef USE_MEM_LATENCY
-							#(MEM_RD_LATENCY*`MEM_CLOCK_PERIOD);
+							#(MEM_RD_LATENCY*MEM_CLOCK_PERIOD);
 						`endif	
 						memDataOut=memory[memAddr];
 					end
-					memBusy=0;
+					memBusyOut=0;
 					memState=MEM_READY;
 				end
 				MEM_READY:
@@ -112,6 +93,6 @@ module memory
 		end
 	end
 endmodule
-	`endif //MEMORY_H
-
 `endif //DUMMY
+
+`endif //MEMORY_H

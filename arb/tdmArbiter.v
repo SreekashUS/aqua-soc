@@ -10,75 +10,75 @@ Add functionality for Loading/Storing Byte,Half-Word,Word,Double-Word in another
 TODO: Need to add Memory Management Unit (MMU) later that deals with virtual memory addresses
 Need to simplify ports
 */
-`define ADDR_W 32
-`define IADDR_W `ADDR_W
-`define DADDR_W `ADDR_W
-`define DDATA_W 32
 
 module tdmArbiter
 #(
-	parameter IADDR_W=`IADDR_W
-	,parameter DADDR_W=`DADDR_W
-	,parameter DDATA_W=`DDATA_W
-	,parameter ADDR_W=`ADDR_W
+	parameter IADDR_W=32
+	,parameter DADDR_W=32
+	,parameter DDATA_W=32
+	,parameter ADDR_W=32
 ) 
 (
 	//instruction port
 	input wire [IADDR_W-1:0] memIAddr
 	,input wire reqI
 	,output reg memIReady
-
 	//data load/store port
 	,input wire [DADDR_W-1:0] memDAddr
 	,input wire [DDATA_W-1:0] memDData
 	,input wire wr
 	,input wire reqD
 	,output reg memDReady
-	
 	//Clock and Reset
 	,input wire clk
 	,input wire reset
-
+	
 	//Stall on I/D requests
-	,output wire memBusyOut
+	,input wire memBusyOut
 	//Memory interface
 	,output reg [ADDR_W-1:0] memAddr
-	,input wire memBusyIn
 	,output reg memWr
-	,output reg [DDATA_W-1:0] memDataOut	//Sending to memory
-	,input wire [DDATA_W-1:0] memDataIn		//Received from memory
+	,output reg memReq
+	,output reg [DDATA_W-1:0] memDataIn		//Sending to memory
+	,input wire [DDATA_W-1:0] memDataOut	//Received from memory
+	,output reg [DDATA_W-1:0] memDataOutReg	//received data buffer
 );
-	reg counter; //0-instruction,1-data
+	//0-instruction,1-data
+	reg counter;
 	reg requestSent;
 
-	assign memBusyOut=memBusyIn;
-
-	always @(posedge clk,negedge reset)
+	always @(posedge clk,posedge reset)
 	begin
-		if(~reset)
+		if(reset)
+		begin
 			counter<=0;
+			requestSent<=0;			
+		end
 		else
 		begin
-			if(~memBusyIn)
+			if(~memBusyOut)
 			begin
 				if(~counter && reqI)
 				begin
 					memAddr<=memIAddr;
+					memWr<=0;
 					requestSent<=1;
 				end
 				else if(counter && reqD)
 				begin
 					memAddr<=memDAddr;
-					memDataOut<=memDData;
+					memDataIn<=memDData;
 					memWr<=wr;
 					requestSent<=1;
 				end
+				memReq<=1;
+				counter<=~counter;
 			end
 			else
 			begin
 				if(requestSent)
 				begin
-					if(~memBusyIn)
+					if(~memBusyOut)
 					begin
 						if(counter)
 						begin
@@ -91,6 +91,8 @@ module tdmArbiter
 							memDReady<=0;
 						end
 						requestSent<=0;
+						memDataOutReg<=memDataOut;
+						memReq<=0;
 					end
 				end
 			end
