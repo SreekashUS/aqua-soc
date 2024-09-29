@@ -45,57 +45,75 @@ module tdmArbiter
 );
 	//0-instruction,1-data
 	reg counter;
-	reg requestSent;
+
+	localparam ARB_IDLE		=0;
+	localparam ARB_REQUEST	=1;
+	localparam ARB_STABLE	=2;
+	localparam ARB_DONE		=3;
+
+	reg [1:0] arbState;
 
 	always @(posedge clk,posedge reset)
 	begin
 		if(reset)
 		begin
 			counter<=0;
-			requestSent<=0;			
+			memReq<=0;
+			arbState<=ARB_IDLE;
 		end
 		else
 		begin
-			if(~memBusyOut)
-			begin
-				if(~counter && reqI)
+			case(arbState)
+				ARB_IDLE:
 				begin
-					memAddr<=memIAddr;
-					memWr<=0;
-					requestSent<=1;
-				end
-				else if(counter && reqD)
-				begin
-					memAddr<=memDAddr;
-					memDataIn<=memDData;
-					memWr<=wr;
-					requestSent<=1;
-				end
-				memReq<=1;
-				counter<=~counter;
-			end
-			else
-			begin
-				if(requestSent)
-				begin
-					if(~memBusyOut)
+					if(counter==0 && reqI)
 					begin
-						if(counter)
-						begin
-							memDReady<=1;
-							memIReady<=0;
-						end
-						else
-						begin
-							memIReady<=1;
-							memDReady<=0;
-						end
-						requestSent<=0;
-						memDataOutReg<=memDataOut;
-						memReq<=0;
+						memAddr<=memIAddr;
+						memWr<=0;
+						memReq<=1;
+						arbState<=ARB_REQUEST;
+					end
+					else if(counter==1 && reqD)
+					begin
+						memAddr<=memDAddr;
+						memWr<=wr;
+						memDataIn<=memDData;
+						memReq<=1;
+						arbState<=ARB_REQUEST;
+					end
+					// wait for requests continuously
+					else
+					begin
+						counter<=~counter;
 					end
 				end
-			end
+
+				ARB_REQUEST:
+				begin
+					memReq<=0;
+					arbState<=ARB_STABLE;
+				end
+
+				ARB_STABLE:
+				begin
+					//Keep arbiter in this mode until request completes
+					if(~memBusyOut)
+					begin
+						arbState<=ARB_DONE;
+						memIReady=(counter==0);
+						memDReady=(counter==1);
+					end
+				end
+
+				ARB_DONE:
+				begin
+					memDataOutReg<=memDataOut;
+					counter<=~counter;
+					arbState<=ARB_IDLE;
+					memIReady<=0;
+					memDReady<=0;
+				end
+			endcase
 		end
 	end
 endmodule

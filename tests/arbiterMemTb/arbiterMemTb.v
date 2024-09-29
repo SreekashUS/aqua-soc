@@ -1,3 +1,5 @@
+`timescale 1ns/1ps
+
 `include "../arb/tdmArbiter.v"
 `define COMPILE_CHECK
 `define DUMMY
@@ -91,19 +93,41 @@ module arbiterMemTb();
 //ClockGens END
 
 
+	integer i;
 	initial
 	begin
 		reset=1;
 		#(MEM_CLOCK_PERIOD) reset =0;
 
+		reqI=0;
+		//initialize memory first
+		for(i=0;i<16;i=i+1)
+		begin
+			memDAddr=i;
+			reqD=1;
+			wr=1;
+			#(MEM_CLOCK_PERIOD);
+			memDData=i;
+
+			@(negedge memBusyOut);
+			#(MEM_CLOCK_PERIOD);
+		end
+
+		//perform arb-memory interface test
 		repeat(32)
 		begin
-			memIAddr=$random&4'hf;
-			memDAddr=$random&4'hf;
-			reqI=$random;
-			reqD=$random;
-			wr=$random;
-			memDData=$random&8'hff;
+			if($random)
+			begin			
+				memIAddr=$random&4'hf;
+				reqI=$random;
+			end
+			else
+			begin
+				memDAddr=$random&4'hf;
+				reqD=$random;
+				wr=$random;
+				memDData=$random&8'hff;
+			end
 
 			@(negedge memBusyOut);
 			#(MEM_CLOCK_PERIOD);				

@@ -24,11 +24,11 @@ module memoryTb;
 //Module dummy/memory START
 	reg  [MEM_ADDR_SIZE-1:0] memAddr;
 	reg  [MEM_WORD_SIZE-1:0] memDataIn;
-	reg  wr;
-	reg req=0;
+	reg  memWr;
+	reg memReq=0;
 	reg  clk=0;
 	reg reset=0;
-	wire  memBusy;
+	wire  memBusyOut;
 	wire [MEM_WORD_SIZE-1:0] memDataOut;
 //Module dummy/memory START
 
@@ -50,9 +50,9 @@ module memoryTb;
 	always @(negedge clk)
 	begin
 		//request pulse
-		req=writePhase? $random:1;
+		memReq=writePhase? $random:1;
 		#(MEM_CLOCK_PERIOD);
-		req=0;
+		memReq=0;
 	end
 
 	initial
@@ -65,7 +65,7 @@ module memoryTb;
 		begin
 			memAddr=i;
 			memDataIn=$random;
-			wr=1;
+			memWr=1;
 			//Random write latencies
 			// if($random)
 			// 	#(`MEM_WR_LATENCY*(`MEM_CLOCK_PERIOD*0.5));
@@ -73,21 +73,21 @@ module memoryTb;
 			// 	#(`MEM_WR_LATENCY*(`MEM_CLOCK_PERIOD*2));
 			#(MEM_WR_LATENCY*(MEM_CLOCK_PERIOD));
 		end
-		req=0;
+		memReq=0;
 		writePhase=0;
 
 `ifndef READ_RANDOM
-		@(negedge memBusy);
+		@(negedge memBusyOut);
 `endif
 		//Read randomized
 		for(i=0;i<15;i=i+1)
 		begin
 			memAddr=i;
-			wr=0;
+			memWr=0;
 `ifdef READ_RANDOM
 			#(MEM_RD_LATENCY*(MEM_CLOCK_PERIOD));
 `else
-			@(negedge memBusy);
+			@(negedge memBusyOut);
 `endif
 		end
 `ifdef FINISH
