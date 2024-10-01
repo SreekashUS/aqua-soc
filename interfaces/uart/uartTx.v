@@ -9,12 +9,7 @@ module uartTx
     // parameter CLOCK_DIV=434
 	//BAUD rate=921600 and clock frequency=50MHz
     parameter CLOCK_DIV=54
-`ifdef USE_SINGLE_PARITY
-    ,parameter DATA_BITS=7+1
-`else
-    ,parameter DATA_BITS=7
-`endif
-
+    ,parameter DATA_BITS=8
     ,parameter STOP_BITS=1
 )
 (
@@ -26,11 +21,11 @@ module uartTx
     //uart_tx line
     output reg uart_tx,
     //uart busy uart_state
-    output reg busy
+    output wire busy
 );
     reg [3:0] uart_state;
 
-    parameter BIT_INDEX=$clog2(DATA_BITS);
+    parameter BIT_INDEX=$clog2(DATA_BITS+1);
     reg [BIT_INDEX-1:0] bit_index;
 
     parameter CLK_BITS=$clog2(CLOCK_DIV);
@@ -42,9 +37,10 @@ module uartTx
     localparam DATA=2;
     localparam STOP=3;
 
-`ifdef USE_SINGLE_PARITY
-    reg parityBit;
-`endif
+    assign busy=~(uart_state==IDLE);
+
+    //added for even parity
+    reg [DATA_BITS-1+1:0] dataReg;
 
     always @(posedge clk,posedge rst) 
     begin
@@ -52,7 +48,6 @@ module uartTx
         begin
             uart_state<=IDLE;
             uart_tx<=1;
-            busy<=0;
             clk_count<=0;
             bit_index<=0;
         end 
@@ -62,13 +57,9 @@ module uartTx
                 IDLE:
                 begin
                     uart_tx<=1;
-                    busy<=0;
                     if (start) 
                     begin
                         uart_state<=START;
-                        busy<=1;
-                        //even parity
-                        parityBit=^data;
                     end
                 end
                 
@@ -77,6 +68,8 @@ module uartTx
                     uart_tx<=0;
                     clk_count<=0;
                     uart_state<=DATA;
+                    //put even parity bit within the dataReg
+                    dataReg<={^data,data};
                 end
                 
                 DATA: 
@@ -85,24 +78,19 @@ module uartTx
                     if (clk_count<CLOCK_DIV-1) 
                     begin
                         clk_count<=clk_count+1;
+                        //only for visual debug, causes dynamic power loss
+                        uart_tx<=0;
                     end
 
                     //else send data
-                    else 
+                    else
                     begin
                         clk_count<=0;
-
-                        if (bit_index<DATA_BITS-2)
-                        begin 
-                            bit_index<=bit_index+1;
-                        	uart_tx<=data[bit_index];
-                        end
-`ifdef USE_SINGLE_PARITY
-                        else if(bit_index==DATA_BITS-1)
+                        if (bit_index<DATA_BITS+1)
                         begin
-                        	uart_tx<=parityBit;
+                            bit_index<=bit_index+1;
+                        	uart_tx<=dataReg[bit_index];
                         end
-`endif
                         else
                         begin
                             bit_index<=0;

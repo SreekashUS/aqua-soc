@@ -14,12 +14,7 @@ module uartTb();
 	parameter MEM_CLOCK_PERIOD_BY_2=5;
 	parameter MEM_CLOCK_PERIOD=MEM_CLOCK_PERIOD_BY_2*2;
 	parameter CLOCK_DIV=434;
-
-`ifdef USE_SINGLE_PARITY
-    parameter DATA_BITS=7+1;
-`else
-    parameter DATA_BITS=7;
-`endif
+    parameter DATA_BITS=8;
     parameter STOP_BITS=1;
 //Parameters END
 
@@ -54,15 +49,17 @@ module uartTb();
 		start=0;
 		
 		#(MEM_CLOCK_PERIOD) rst=0;
-		repeat(32)
+		repeat(16)
 		begin
+			// data=8'hff;
 			data=$random;
 			start=1;
+			#(MEM_CLOCK_PERIOD);
+			start=0;
 
 			@(negedge busy);
 
-			start=0;
-			#(MEM_CLOCK_PERIOD);
+			#(MEM_CLOCK_PERIOD*10);
 		end
 `ifdef FINISH
 		$finish;
