@@ -1,9 +1,7 @@
 `ifndef UARTTX_H
 `define UARTTX_H
 
-`define USE_SINGLE_PARITY
-
-module uartTx
+module uartTxMod
 #(
 	//BAUD rate=115200 and clock frequency=50MHz
     // parameter CLOCK_DIV=434
@@ -14,16 +12,16 @@ module uartTx
 )
 (
     input wire clk,rst,
-    //start signal
-    input wire start,
-    //data to be transmitted
-    input wire [DATA_BITS-1:0] data,
-    //uart_tx line
-    output reg uart_tx,
-    //uart busy uart_state
-    output wire busy
+    //startTx signal
+    input wire startTx,
+    //dataTx to be transmitted
+    input wire [DATA_BITS-1:0] dataTx,
+    //uartTx line
+    output reg uartTx,
+    //uartBusyTx
+    output wire uartBusyTx
 );
-    reg [3:0] uart_state;
+    reg [1:0] uart_state_tx;
 
     parameter BIT_INDEX=$clog2(DATA_BITS+1);
     reg [BIT_INDEX-1:0] bit_index;
@@ -37,7 +35,7 @@ module uartTx
     localparam DATA=2;
     localparam STOP=3;
 
-    assign busy=~(uart_state==IDLE);
+    assign uartBusyTx=~(uart_state_tx==IDLE);
 
     //added for even parity
     reg [DATA_BITS-1+1:0] dataReg;
@@ -46,30 +44,31 @@ module uartTx
     begin
         if (rst) 
         begin
-            uart_state<=IDLE;
-            uart_tx<=1;
+            uart_state_tx<=IDLE;
+            uartTx<=1;
             clk_count<=0;
             bit_index<=0;
         end 
         else 
         begin
-            case (uart_state)
+            case (uart_state_tx)
                 IDLE:
                 begin
-                    uart_tx<=1;
-                    if (start) 
+                    uartTx<=1;
+                    if (startTx) 
                     begin
-                        uart_state<=START;
+                        bit_index<=0;
+                        uart_state_tx<=START;
                     end
                 end
                 
                 START: 
                 begin
-                    uart_tx<=0;
+                    uartTx<=0;
                     clk_count<=0;
-                    uart_state<=DATA;
+                    uart_state_tx<=DATA;
                     //put even parity bit within the dataReg
-                    dataReg<={^data,data};
+                    dataReg<={^dataTx,dataTx};
                 end
                 
                 DATA: 
@@ -79,34 +78,40 @@ module uartTx
                     begin
                         clk_count<=clk_count+1;
                         //only for visual debug, causes dynamic power loss
-                        uart_tx<=0;
+                        // uartTx<=0;
                     end
 
-                    //else send data
+                    //else send dataTx
                     else
                     begin
                         clk_count<=0;
                         if (bit_index<DATA_BITS+1)
                         begin
                             bit_index<=bit_index+1;
-                        	uart_tx<=dataReg[bit_index];
+                        	uartTx<=dataReg[bit_index];
                         end
                         else
                         begin
                             bit_index<=0;
-                            uart_state<=STOP;
+                            uart_state_tx<=STOP;
                         end
                     end
                 end
                 
-                //Single stop bit
+                //Single stop bit at the baud rate
                 STOP: 
                 begin
-                    uart_tx<=1;
-                    uart_state<=IDLE;
+                    uartTx<=1;
+                    if(clk_count<=CLOCK_DIV-1)
+                    begin
+                        clk_count<=clk_count+1;
+                        uart_state_tx<=STOP;
+                    end
+                    else
+                        uart_state_tx<=IDLE;
                 end
                 
-                default: uart_state<=IDLE;
+                default: uart_state_tx<=IDLE;
             endcase
         end
     end
