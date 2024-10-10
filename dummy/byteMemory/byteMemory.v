@@ -1,7 +1,7 @@
 `ifndef BYTEMEMORY_H
 `define BYTEMEMORY_H
 
-`define DUMMY
+// `define DUMMY
 
 `ifdef DUMMY
 
@@ -120,7 +120,7 @@ module byteMemory
 	//burst length 
 	,input wire [BURST_BITS-1:0] memBurstLen
 	,output wire memBusyOut
-	,output reg [MEM_WORD_SIZE-1:0] memDataOut
+	,output wire [MEM_WORD_SIZE-1:0] memDataOut
 );
 	
 	//generate wires for banks
@@ -134,21 +134,22 @@ module byteMemory
 	genvar i;
 	for(i=0;i<MEM_BANKS;i=i+1)
 	begin
+		assign memBankAddr[i]=memAddr[MEM_ADDR_SIZE-1:MEM_BANK_BITS];
+		assign memDataOut[(i+1)*MEM_BANK_WORD_SIZE-1:i*MEM_BANK_WORD_SIZE]=memBankDataOut[i];
 		memBank
 		//parameter overriding
 		#()
 		memBankInst
 		(
 			.clk       (clk),
-			//to be controlled by the controller
 			.memWr     (memWr),
 			.memBusyOut(memBankBusyOut[i]),
 			.reset     (reset),
 			.memAddr   (memBankAddr[i]),
 			.memDataOut(memBankDataOut[i]),
-			.memDataIn (memDataIn[i+MEM_BANK_WORD_SIZE-1:i]),
+			.memDataIn (memDataIn[(i+1)*MEM_BANK_WORD_SIZE-1:i*MEM_BANK_WORD_SIZE]),
 			//to be controlled by the controller
-			.memReq    (memReq)
+			.memReq    (memStrb[i])
 		);
 	end
 endmodule
