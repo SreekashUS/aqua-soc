@@ -9,21 +9,21 @@
 `define DUMP
 
 module arbiterMemTb();
-//Parameters arb/tdmArbiter START
+//Params arb/tdmArbiter START
 	parameter ADDR_W=32;
 	parameter IADDR_W=32;
 	parameter DADDR_W=32;
 	parameter DDATA_W=32;
-//Parameters arb/tdmArbiter END
+//Params arb/tdmArbiter END
 
-//Parameters dummy/memory START
+//Params dummy/memory START
 	parameter MEM_ADDR_SIZE=32;
 	parameter MEM_WORD_SIZE=32;
 	parameter MEM_WR_LATENCY=2;
 	parameter MEM_RD_LATENCY=2;
 	parameter MEM_CLOCK_PERIOD_BY_2=5;
 	parameter MEM_CLOCK_PERIOD=MEM_CLOCK_PERIOD_BY_2*2;
-//Parameters dummy/memory END
+//Params dummy/memory END
 
 //GlobalSignals START
 	reg  clk=0;
