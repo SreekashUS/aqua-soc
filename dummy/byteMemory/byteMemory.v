@@ -8,7 +8,8 @@
 	`define COMPILE_CHECK
 	`ifdef COMPILE_CHECK
 		`define SIM
-		`define USE_MEM_LATENCY
+		//Use mem_latency for timing based simulation only
+		// `define USE_MEM_LATENCY
 	`endif
 
 module memBank

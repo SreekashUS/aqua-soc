@@ -8,28 +8,29 @@
 `ifndef RV32IDECODER_H
 `define RV32IDECODER_H
 
-`define REG_COUNT 5
-`define XLEN 32
-
 module rv32iDecoder
+#(
+	parameter REG_COUNT=5
+	,parameter XLEN=32
+)
 (
 	//Input instruction
-	input wire [`XLEN-1:0] 			instrIn
+	input wire [XLEN-1:0] 			instrIn
 
 	//registers and Types
-	,output wire [`REG_COUNT-1:0]	rs1
-	,output wire [`REG_COUNT-1:0]	rs2
-	,output wire [`REG_COUNT-1:0]	rd
+	,output wire [REG_COUNT-1:0]	rs1
+	,output wire [REG_COUNT-1:0]	rs2
+	,output wire [REG_COUNT-1:0]	rd
 	,output wire [2:0]				funct3
 	,output wire [6:0]				funct7
 	,output wire [6:0]				opcode
 	,output wire [2:0]				instrType
 	,output wire [4:0]				shamt
-	,output wire [`XLEN-1:0]		uImm
-	,output wire [`XLEN-1:0]		iImm
-	,output wire [`XLEN-1:0]		sImm
-	,output wire [`XLEN-1:0]		bImm
-	,output wire [`XLEN-1:0]		jImm
+	,output wire [XLEN-1:0]		uImm
+	,output wire [XLEN-1:0]		iImm
+	,output wire [XLEN-1:0]		sImm
+	,output wire [XLEN-1:0]		bImm
+	,output wire [XLEN-1:0]		jImm
 
 	//Instruction type
 	,output wire 					isLoad

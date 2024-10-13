@@ -3,7 +3,7 @@
 
 module simpleBranch
 #(
-	parameter ADDR_SIZE=20
+	parameter ADDR_SIZE=32
 	// Implement a mux for operations
 	,parameter BRANCH_OPT=4
 )
