@@ -28,16 +28,11 @@ Note:
 	can be translated to ALU operations
 */
 
-//Can extend the ALU bit width from external configurations
-`ifndef INT32W
-	`define INT32W 32
-`endif
-
-`define OPW 4
-
 module aluRv32i
 #(
-	parameter INT32W=`INT32W
+	//Can extend the ALU bit width from external configurations
+	parameter INT32W=32
+	,parameter OPW=4
 )
 (	
 	//bind to rs1 usually
@@ -45,7 +40,7 @@ module aluRv32i
 	//bind to imm or rs2
 	,input wire [INT32W-1:0] 	input2In
 	//decoded at the decode stage 
-	,input wire [`OPW-1:0]		opType
+	,input wire [OPW-1:0]		opType
 	//result
 	,output reg [INT32W-1:0]	resultOut
 );

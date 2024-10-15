@@ -20,17 +20,8 @@ module rv32iDecoder
 	//registers and Types
 	,output wire [REG_COUNT-1:0]	rs1
 	,output wire [REG_COUNT-1:0]	rs2
-	,output wire [REG_COUNT-1:0]	rd
-	,output wire [2:0]				funct3
-	,output wire [6:0]				funct7
-	,output wire [6:0]				opcode
-	,output wire [2:0]				instrType
-	,output wire [4:0]				shamt
-	,output wire [XLEN-1:0]		uImm
-	,output wire [XLEN-1:0]		iImm
-	,output wire [XLEN-1:0]		sImm
-	,output wire [XLEN-1:0]		bImm
-	,output wire [XLEN-1:0]		jImm
+	//immediates,rd and shamt decoded in the subsequent stages to reduce pipeline FFs
+	,output wire [24:0]				immsRdShamt
 
 	//Instruction type
 	,output wire 					isLoad
@@ -61,32 +52,32 @@ module rv32iDecoder
 	localparam SysCall_Opcode	=5'b11100;
 
 	//registers (r-type instructions)
-	assign rd 		=instrIn[11:7];
 	assign rs1		=instrIn[19:15];
 	assign rs2		=instrIn[24:20];
-	//Immediates
-	assign iImm 	={{21{instrIn[31]}},instrIn[30:20]};
-	assign sImm 	={{21{instrIn[31]}},instrIn[30:25],instrIn[11:7]};
-	assign bImm 	={{20{instrIn[31]}},instrIn[7],instrIn[30:25],instrIn[11:8],1'b0};
-	assign uImm 	={instrIn[31:12],12'b0};
-	assign jImm 	={{12{instrIn[31]}},instrIn[19:12],instrIn[20],instrIn[30:21],1'b0};
-	//type of instruction
-	assign isLoad		= (instrIn[7:2]==Load_Opcode);
-	assign isStore		= (instrIn[7:2]==Store_Opcode);
-	assign isMemOrder	= (instrIn[7:2]==MemOrder_Opcode);
-	assign isAluReg		= (instrIn[7:2]==AluReg_Opcode);
-	assign isAluImm		= (instrIn[7:2]==AluImm_Opcode);
-	assign isLui		= (instrIn[7:2]==Lui_Opcode);
-	assign isAuipc		= (instrIn[7:2]==Auipc_Opcode);
-	assign isJAL		= (instrIn[7:2]==Jal_Opcode);
-	assign isJALR		= (instrIn[7:2]==Jalr_Opcode);
-	assign isBranch		= (instrIn[7:2]==Branch_Opcode);
-	assign isSysCall	= (instrIn[7:2]==SysCall_Opcode);
 
-	//function for ALU or other units based in instruction type
-	assign funct3 		= (instrIn[14:12]);
+	/*
+	decoder redesign
+	- immediate extraction is performed in later stages
+	in order to reduce the pipeline width
+	- and to probably support the 2R1W cycles, considering
+	only 2 reads/writes can be supported concurrently
+	*/
+	assign immsRdShamt=instrIn[31:7];
+	//type of instruction
+	assign isLoad		= (instrIn[6:2]==Load_Opcode);
+	assign isStore		= (instrIn[6:2]==Store_Opcode);
+	assign isMemOrder	= (instrIn[6:2]==MemOrder_Opcode);
+	assign isAluReg		= (instrIn[6:2]==AluReg_Opcode);
+	assign isAluImm		= (instrIn[6:2]==AluImm_Opcode);
+	assign isLui		= (instrIn[6:2]==Lui_Opcode);
+	assign isAuipc		= (instrIn[6:2]==Auipc_Opcode);
+	assign isJAL		= (instrIn[6:2]==Jal_Opcode);
+	assign isJALR		= (instrIn[6:2]==Jalr_Opcode);
+	assign isBranch		= (instrIn[6:2]==Branch_Opcode);
+	assign isSysCall	= (instrIn[6:2]==SysCall_Opcode);
+
 	//shift amount for shifter
-	assign shamt 		= (instrIn[24:20]);
+	//shamt moved to execution part
 endmodule
 
 `endif //RV32IDECODER_H
