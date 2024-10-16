@@ -1,16 +1,10 @@
 `ifndef REGFILE2R1W_H
 `define REGFILE2R1W_H
 
-`ifndef INT32W
-	`define INT32W 32
-`endif
-
-`define REGFILE_SIZE 5
-
 module regFile2R1W
 #(
-	parameter INT32W=`INT32W,
-	parameter REGFILE_SIZE=`REGFILE_SIZE
+	parameter INT32W=32,
+	parameter REGFILE_SIZE=5
 ) 
 (
 	//rs1 read

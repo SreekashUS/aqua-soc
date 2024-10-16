@@ -1,10 +1,13 @@
-`include "../../regFile/regFile2R1W.v"
-`include "../../branch/simple/simpleBranch.v"
-`include "../../arb/tdmArbiter/tdmArbiter.v"
-`include "../../core/RV32I/rv32iDecoder.v"
-`include "../../core/alu/aluRv32i.v"
-`include "../../utils/registers/pipelining/regParamCg.v"
-`include "../../utils/registers/pipelining/regParam.v"
+// `define SIM
+`ifdef SIM
+	`include "../../regFile/regFile2R1W.v"
+	`include "../../branch/simple/simpleBranch.v"
+	`include "../../arb/tdmArbiter/tdmArbiter.v"
+	`include "../../decoders/RV32I/rv32iDecoder.v"
+	`include "../../exec/alu/aluRv32i.v"
+	`include "../../utils/registers/pipelining/regParamCg.v"
+	`include "../../utils/registers/pipelining/regParam.v"
+`endif
 
 /*
 Main processor core here
@@ -18,11 +21,17 @@ module aqua_pygmy
 )
 (
 	//Arbiter access to memory
-
+	output wire [MEM_ADDR_WIDTH-1:0] memAddr
+	,output wire memWr
+	,output wire memReq
+	,output wire [MEM_DATA_WIDTH-1:0] memDataIn
+	,input wire memBusyOut
+	,input wire [MEM_DATA_WIDTH-1:0] memDataOut
+	
 	//Interrupts etc
 
 	//global signals
-	input wire clk,reset
+	,input wire clk,reset
 );
 	//Default pipeline stages
 	/*
@@ -31,14 +40,12 @@ module aqua_pygmy
 	|- Fetch
 	|- Decode
 	|- Execute
-	|- Writeback
 	|- Memory access
+	|- Writeback
 	*/
 
 	//Before IF (always active updating PC based on flow)
 	simpleBranch
-	#(
-	)
 	simpleBranchInst
 	(
 		.clk        (clk)
@@ -58,17 +65,17 @@ module aqua_pygmy
 	//IF stage
 	//IF interface for both I-data and D-data accesses
 	tdmArbiter
-	#(
-	)
 	tdmArbiterInst
 	(
 		.clk          (clk)
 		,.reset        (reset)
 
+		//I-data
 		,.memIAddr     (pc)
 		,.reqI         (~pcStall)
 		,.memIReady    (memIReady)
 
+		//D-data
 		//Connect here from MEM stage (Loads/Stores)
 		//TODO
 		,.memDAddr     (resultOut)
@@ -84,6 +91,8 @@ module aqua_pygmy
 		,.memReq       (memReq)
 		,.memDataIn    (memDataIn)
 		,.memDataOut   (memDataOut)
+
+		//actual data received here
 		,.memDataOutReg(memDataOutReg)
 	);
 
@@ -103,10 +112,7 @@ module aqua_pygmy
 	);
 
 	//DE stage (Do partial decoding now and send rs1,rs2 to regFile)
-	rv32iDecoder
-	#(
-	)
-	rv32iDecoderInst
+	rv32iDecoder rv32iDecoderInst
 	(
 		//instruction In
 		.instrIn   (rv32iDecodeIn)
@@ -131,6 +137,19 @@ module aqua_pygmy
 		,.isSysCall (isSysCall)		//1
 	);
 
+	//regFile (both in DE and WB stage)
+	regFile2R1W regFile2R1WInst
+	(
+		.clk    (clk)
+		,.rst    (rst)
+		,.rs1    (rs1)
+		,.rs2    (rs2)
+		,.dataRs1(dataRs1)
+		,.dataRs2(dataRs2)
+		,.rd     (rd)
+		,.dataRd (dataRd)
+	);
+
 	//concat all necessary wires into the bus
 	//Immediates+Rd+Shift amount in the top 25 wires+
 	//Decoded operation wires
@@ -150,11 +169,7 @@ module aqua_pygmy
 	};
 
 	//DE->EX pipeline registers
-	regParam
-	#(
-		.WIDTH()
-	)
-	deExRegParamInst
+	regParam deExRegParamInst
 	(
 		.clk   (clk)
 		,.reset (reset)
@@ -168,10 +183,12 @@ module aqua_pygmy
 		- input1 as regFile rs1 or PC
 		- input2 as regFile rs2 or Imm or shamt
 	*/
-	aluRv32i
-	#(
-	)
-	aluRv32iInst
+	wire [MEM_DATA_WIDTH-1:0] input1In,input2In;
+
+	// assign input1in=(isAluReg)? dataRs1:pc;
+	// assign input2in=(isAluReg)? dataRs2:imms;
+
+	aluRv32i aluRv32iInst
 	(
 		.input1In (input1In)
 		,.input2In (input2In)
@@ -180,11 +197,7 @@ module aqua_pygmy
 	);
 
 	//EX->MEM pipeline registers
-	regParam
-	#(
-		.WIDTH()
-	)
-	deExRegParamInst
+	regParam exMemRegParamInst
 	(
 		.clk   (clk)
 		,.reset (reset)
@@ -199,12 +212,7 @@ module aqua_pygmy
 	/*
 	Rd needed
 	*/
-
-	regParam
-	#(
-		.WIDTH()
-	)
-	deExRegParamInst
+	regParam memWbRegParamInst
 	(
 		.clk   (clk)
 		,.reset (reset)

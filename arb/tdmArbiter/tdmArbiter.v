@@ -59,6 +59,8 @@ module tdmArbiter
 		begin
 			counter<=0;
 			memReq<=0;
+			memIReady<=0;
+			memDReady<=0;
 			arbState<=ARB_IDLE;
 		end
 		else
@@ -71,6 +73,7 @@ module tdmArbiter
 						memAddr<=memIAddr;
 						memWr<=0;
 						memReq<=1;
+						memIReady<=0;
 						arbState<=ARB_REQUEST;
 					end
 					else if(counter==1 && reqD)
@@ -79,6 +82,7 @@ module tdmArbiter
 						memWr<=wr;
 						memDataIn<=memDData;
 						memReq<=1;
+						memDReady<=0;
 						arbState<=ARB_REQUEST;
 					end
 					// wait for requests continuously
@@ -100,8 +104,8 @@ module tdmArbiter
 					if(~memBusyOut)
 					begin
 						arbState<=ARB_DONE;
-						memIReady=(counter==0);
-						memDReady=(counter==1);
+						memIReady<=(counter==0);
+						memDReady<=(counter==1);
 					end
 				end
 

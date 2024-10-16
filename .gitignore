@@ -7,5 +7,6 @@ temp.txt
 
 # quartus files and folders
 proj
+*/fpga/*
 *Synth.cmd
 *Synth.tcl
