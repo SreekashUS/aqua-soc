@@ -35,8 +35,6 @@ module aqua_pygmy
 );
 	//Default pipeline stages
 	/*
-	|- Before Fetch (Update PC->not pipeRegs)
-
 	|- Fetch
 	|- Decode
 	|- Execute
@@ -48,14 +46,10 @@ module aqua_pygmy
 	simpleBranch
 	simpleBranchInst
 	(
-		.clk        (clk)
+		.clk         (clk)
 		,.reset      (reset)
-		
-		//Stall until address is calculated
 		,.pcStall    (pcStall)
-		//Selection wire set by instruction type
 		,.selWire    (selWire)
-		//Target is calculated by ALU in this case
 		,.jumpTarget1(aluOut)
 		,.jumpTarget2(aluOut)
 		,.jumpTarget3(aluOut)
@@ -69,15 +63,12 @@ module aqua_pygmy
 	(
 		.clk          (clk)
 		,.reset        (reset)
-
-		//I-data
+		
+		//I-access
 		,.memIAddr     (pc)
 		,.reqI         (~pcStall)
 		,.memIReady    (memIReady)
-
-		//D-data
-		//Connect here from MEM stage (Loads/Stores)
-		//TODO
+		//D-access
 		,.memDAddr     (resultOut)
 		,.memDData     (memDData)
 		,.wr           (wr)
@@ -91,39 +82,32 @@ module aqua_pygmy
 		,.memReq       (memReq)
 		,.memDataIn    (memDataIn)
 		,.memDataOut   (memDataOut)
-
-		//actual data received here
 		,.memDataOutReg(memDataOutReg)
 	);
 
 	//IF->DE pipeline registers
 	regParamCg
 	#(
-		.WIDTH(32)
+		.WIDTH(32+32)
 	)
 	ifDeRegParamCgInst
 	(
 		.clk(clk)
 		,.reset(reset)
-		,.regIn(memDataOutReg)
-		//First part handles stall logic, second when I-data is ready
-		,.en((~pcStall)&&(memIReady))
+
+		,.regIn({pc,memDataOutReg})
+		,.en(~pcStall&memIReady)
 		,.regOut(rv32iDecodeIn)
 	);
 
 	//DE stage (Do partial decoding now and send rs1,rs2 to regFile)
 	rv32iDecoder rv32iDecoderInst
 	(
-		//instruction In
 		.instrIn   (rv32iDecodeIn)
 
-		//DE regFile operations and alu operations
 		,.rs1       (rs1)
 		,.rs2       (rs2)
-
-		//EX
 		,.immsRdShamt(immsRdShamt)	//25 bits compressed for immediates,rd and shamt
-
 		,.isLoad    (isLoad)		//1
 		,.isStore   (isStore)		//1
 		,.isMemOrder(isMemOrder)	//1
@@ -140,8 +124,9 @@ module aqua_pygmy
 	//regFile (both in DE and WB stage)
 	regFile2R1W regFile2R1WInst
 	(
-		.clk    (clk)
-		,.rst    (rst)
+		.clk     (clk)
+		,.reset  (reset)
+
 		,.rs1    (rs1)
 		,.rs2    (rs2)
 		,.dataRs1(dataRs1)
@@ -154,17 +139,12 @@ module aqua_pygmy
 	//Immediates+Rd+Shift amount in the top 25 wires+
 	//Decoded operation wires
 	wire [25+11-1:0] deExRegIn;
-	
+
 	assign deExRegIn={
 	immsRdShamt
-	,isLoad
-	,isStore
-	,isMemOrder
-	,isAluReg
-	,isAluImm
-	,isJAL
-	,isJALR
-	,isBranch
+	,isLoad,isStore,isMemOrder
+	,isAluReg,isAluImm
+	,isJAL,isJALR,isBranch
 	,isSysCall
 	};
 
@@ -183,10 +163,26 @@ module aqua_pygmy
 		- input1 as regFile rs1 or PC
 		- input2 as regFile rs2 or Imm or shamt
 	*/
-	wire [MEM_DATA_WIDTH-1:0] input1In,input2In;
-
-	// assign input1in=(isAluReg)? dataRs1:pc;
-	// assign input2in=(isAluReg)? dataRs2:imms;
+	reg [`MEM_DATA_WIDTH-1:0] input1In,input2In;
+	always @(*)
+	begin
+		case({isAluReg,isAluImm,isAuipc})
+			3'b100:
+			begin
+				input1In<=dataRs1;
+				input2In<=dataRs2;
+			end
+			3'b010:
+			begin
+				input1In<=dataRs1;
+				input2In<=immediate;
+			end
+			3'b001:
+			begin
+				input1In<=pc;
+			end
+		endcase
+	end
 
 	aluRv32i aluRv32iInst
 	(

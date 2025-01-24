@@ -23,7 +23,7 @@ module regFile2R1W
 	//Clock
 	input wire clk,
 	//Reset
-	input wire rst
+	input wire reset
 );
 	//x0 is 0 and cannot be written but read from
 
@@ -33,9 +33,9 @@ module regFile2R1W
 	*/
 	reg [INT32W-1:0] registers [(1<<REGFILE_SIZE)-1:0];
 
-	always @(posedge clk, negedge rst)
+	always @(posedge clk, negedge reset)
 	begin
-		if(~rst)
+		if(~reset)
 		begin
 			//Use systemverilog for compiling
 			for(integer i=0;i<32;i=i+1)
