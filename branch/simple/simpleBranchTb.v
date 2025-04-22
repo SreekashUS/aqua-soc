@@ -12,7 +12,7 @@ module simpleBranchTb();
 //GlobalParams END
 
 //Params simple/simpleBranch START;
-	parameter  ADDR_SIZE=20;
+	parameter  ADDR_SIZE=32;
 	// Implement a mux for operations
 	parameter  BRANCH_OPT=4;
 //Params simple/simpleBranch END;

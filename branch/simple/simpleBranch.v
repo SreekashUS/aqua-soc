@@ -35,24 +35,21 @@ module simpleBranch
 	always @(posedge clk,posedge reset)
 	begin
 		if(reset)
-			pc<=0;
+			pc<=0;	//change this for set origin address
 		else
 		begin
-			if(~pcStall)
-			begin
-				case(selWire)
-					2'd0:
-						pc<=pc+4;
-					2'd1:
-						pc<=jumpTarget1;
-					2'd2:
-						pc<=jumpTarget2;
-					2'd3:
-						pc<=jumpTarget3;
-					default:
-						pc<=pc+4;
-				endcase
-			end
+			case(selWire)
+				2'd0:
+					pc<=pc+((pcStall)? (0):(4));
+				2'd1:
+					pc<=(pcStall)? pc:jumpTarget1;
+				2'd2:
+					pc<=(pcStall)? pc:jumpTarget2;
+				2'd3:
+					pc<=(pcStall)? pc:jumpTarget3;
+				default:
+					pc<=pc+((pcStall)? (0):(4));
+			endcase
 		end
 	end
 

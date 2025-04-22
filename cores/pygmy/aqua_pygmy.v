@@ -67,17 +67,33 @@ module aqua_pygmy
 		//I-access
 		,.memIAddr     (pc)
 		,.reqI         (~pcStall)
+		
+		//add below signal to pcstall?
 		,.memIReady    (memIReady)
+		/*
+		Explanation:
+		If there's a cache miss or high latency access from memory,
+		The pipeline should wait until I-date gets back from memory
+		i.e-> pipeline should continue executing execution units, but stop
+		pipeline before it (IF and ID)
+		*/
+		
 		//D-access
-		,.memDAddr     (resultOut)
+		//aguOut is from address generation unit
+		,.memDAddr     (aguOut)
 		,.memDData     (memDData)
 		,.wr           (wr)
 		,.reqD         (reqD)
+
+		//Similar to memIReady
+		/*
+		Should stall?
+		*/
 		,.memDReady    (memDReady)
 
 		//Memory interface
-		,.memBusyOut   (memBusyOut)
-		,.memAddr      (memAddr)
+		,.memBusyOut   (memBusyOut)//?
+		,.memAddr      (memAddr)//to memory or cache interfaces
 		,.memWr        (memWr)
 		,.memReq       (memReq)
 		,.memDataIn    (memDataIn)
@@ -85,7 +101,9 @@ module aqua_pygmy
 		,.memDataOutReg(memDataOutReg)
 	);
 
+
 	//IF->DE pipeline registers
+	wire [32+32-1:0] pc_rv32iDecodeIn;
 	regParamCg
 	#(
 		.WIDTH(32+32)
@@ -97,8 +115,11 @@ module aqua_pygmy
 
 		,.regIn({pc,memDataOutReg})
 		,.en(~pcStall&memIReady)
-		,.regOut(rv32iDecodeIn)
+		,.regOut(pc_rv32iDecodeIn)
 	);
+
+	wire [31:0] rv32iDecodeIn;
+	assign rv32iDecodeIn=pc_rv32iDecodeIn[31:0];
 
 	//DE stage (Do partial decoding now and send rs1,rs2 to regFile)
 	rv32iDecoder rv32iDecoderInst
@@ -108,6 +129,9 @@ module aqua_pygmy
 		,.rs1       (rs1)
 		,.rs2       (rs2)
 		,.immsRdShamt(immsRdShamt)	//25 bits compressed for immediates,rd and shamt
+		/*Can move this part to Execute/Dispatch pipeline stage to reduce
+		flip flop count, but fanout should be taken into consideration
+		*/
 		,.isLoad    (isLoad)		//1
 		,.isStore   (isStore)		//1
 		,.isMemOrder(isMemOrder)	//1
