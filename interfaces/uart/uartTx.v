@@ -1,14 +1,13 @@
 `ifndef UARTTX_H
 `define UARTTX_H
 
-module uartTxMod
+`include "../utils/baud_generators.v"
+
+module UartTx
 #(
-	//BAUD rate=115200 and clock frequency=50MHz
-    // parameter CLOCK_DIV=434
-	//BAUD rate=921600 and clock frequency=50MHz
-    parameter CLOCK_DIV=54
-    ,parameter DATA_BITS=8
+    parameter DATA_BITS=8
     ,parameter STOP_BITS=1
+    ,parameter BAUD_BITS=16
 )
 (
     input wire clk,rst,
@@ -16,6 +15,8 @@ module uartTxMod
     input wire startTx,
     //dataTx to be transmitted
     input wire [DATA_BITS-1:0] dataTx,
+    //configurable baud
+    input wire [BAUD_BITS-1:0] divisor,
     //uartTx line
     output reg uartTx,
     //uartBusyTx
@@ -26,92 +27,94 @@ module uartTxMod
     parameter BIT_INDEX=$clog2(DATA_BITS+1);
     reg [BIT_INDEX-1:0] bit_index;
 
-    parameter CLK_BITS=$clog2(CLOCK_DIV);
-    reg [CLK_BITS-1:0] clk_count;
+    parameter STOP_BIT_COUNTER=$clog2(STOP_BITS+1);
+    reg [STOP_BIT_COUNTER-1:0] stop_counter;
 
     //UART uart_states
-    localparam IDLE=0;
-    localparam START=1;
-    localparam DATA=2;
-    localparam STOP=3;
+    localparam UART_STATE_IDLE=0;
+    localparam UART_STATE_START=1;
+    localparam UART_STATE_DATA=2;
+    localparam UART_STATE_STOP=3;
 
-    assign uartBusyTx=~(uart_state_tx==IDLE);
+    assign uartBusyTx=~(uart_state_tx==UART_STATE_IDLE);
 
     //added for even parity
     reg [DATA_BITS-1+1:0] dataReg;
 
-    always @(posedge clk,posedge rst) 
+    //from baud generator
+    wire baud_clk;
+
+    //Integer baud generator instance
+    BaudGeneratorInt 
+    #(.BAUD_BITS(BAUD_BITS))
+    gen
+    (
+        .clk(clk),
+        .rst(rst),
+        .divisor(divisor),
+        .baud_clk(baud_clk)
+    );
+
+    always @(posedge baud_clk,posedge rst) 
     begin
         if (rst) 
         begin
-            uart_state_tx<=IDLE;
+            uart_state_tx<=UART_STATE_IDLE;
             uartTx<=1;
-            clk_count<=0;
             bit_index<=0;
         end 
         else 
         begin
             case (uart_state_tx)
-                IDLE:
+                UART_STATE_IDLE:
                 begin
                     uartTx<=1;
                     if (startTx) 
                     begin
                         bit_index<=0;
-                        uart_state_tx<=START;
+                        uart_state_tx<=UART_STATE_START;
                     end
                 end
                 
-                START: 
+                UART_STATE_START: 
                 begin
                     uartTx<=0;
-                    clk_count<=0;
-                    uart_state_tx<=DATA;
+                    uart_state_tx<=UART_STATE_DATA;
                     //put even parity bit within the dataReg
                     dataReg<={^dataTx,dataTx};
                 end
                 
-                DATA: 
+                UART_STATE_DATA: 
                 begin
-                    //Pulse generator for required Baud rate
-                    if (clk_count<CLOCK_DIV-1) 
+                    if (bit_index<DATA_BITS+1)
                     begin
-                        clk_count<=clk_count+1;
-                        //only for visual debug, causes dynamic power loss
-                        // uartTx<=0;
+                        bit_index<=bit_index+1;
+                    	uartTx<=dataReg[bit_index];
                     end
-
-                    //else send dataTx
                     else
                     begin
-                        clk_count<=0;
-                        if (bit_index<DATA_BITS+1)
-                        begin
-                            bit_index<=bit_index+1;
-                        	uartTx<=dataReg[bit_index];
-                        end
-                        else
-                        begin
-                            bit_index<=0;
-                            uart_state_tx<=STOP;
-                        end
+                        bit_index<=0;
+                        uart_state_tx<=UART_STATE_STOP;
+                        stop_counter<=0;
                     end
                 end
                 
                 //Single stop bit at the baud rate
-                STOP: 
+                UART_STATE_STOP: 
                 begin
-                    uartTx<=1;
-                    if(clk_count<=CLOCK_DIV-1)
+                    if(stop_counter<STOP_BITS)
                     begin
-                        clk_count<=clk_count+1;
-                        uart_state_tx<=STOP;
+                        uartTx<=1;
+                        stop_counter<=stop_counter+1;
                     end
                     else
-                        uart_state_tx<=IDLE;
+                    begin
+                        stop_counter<=0;
+                        uart_state_tx<=UART_STATE_IDLE;
+                    end
                 end
                 
-                default: uart_state_tx<=IDLE;
+                default: uart_state_tx<=UART_STATE_IDLE;
             endcase
         end
     end

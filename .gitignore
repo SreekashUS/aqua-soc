@@ -4,6 +4,12 @@ misc
 # simulation files and temporary files
 *.vcd
 temp.txt
+## verilator simulation directory and sim files
+obj_dir
+verilator_sim
+
+# yosys synthesis files
+synth
 
 # quartus files and folders
 proj
