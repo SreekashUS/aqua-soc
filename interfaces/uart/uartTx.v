@@ -1,5 +1,5 @@
-`ifndef UARTTX_H
-`define UARTTX_H
+`ifndef UART_TX_H
+`define UART_TX_H
 
 `include "../utils/baud_generators.v"
 
@@ -21,6 +21,12 @@ module UartTx
     output reg uartTx,
     //uartBusyTx
     output wire uartBusyTx
+
+`ifdef DEBUG_VERILATOR
+    //debug wires
+   ,output wire debug_baud_clk
+`endif
+
 );
     reg [1:0] uart_state_tx;
 
@@ -43,6 +49,11 @@ module UartTx
 
     //from baud generator
     wire baud_clk;
+
+`ifdef DEBUG_VERILATOR
+    assign debug_baud_clk=baud_clk;
+`endif
+
 
     //Integer baud generator instance
     BaudGeneratorInt 
@@ -96,6 +107,7 @@ module UartTx
                         bit_index<=0;
                         uart_state_tx<=UART_STATE_STOP;
                         stop_counter<=0;
+                        uartTx<=1;
                     end
                 end
                 
@@ -120,4 +132,4 @@ module UartTx
     end
 endmodule
 
-`endif //UARTTX_H
+`endif //UART_TX_H
