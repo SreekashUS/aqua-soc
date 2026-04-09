@@ -1,39 +1,31 @@
 `ifndef UART_TX_H
 `define UART_TX_H
 
-`include "../utils/baud_generators.v"
+`include "baud_generator_int.v"
 
-module UartTx
+module uart_tx
 #(
     parameter DATA_BITS=8
-    ,parameter STOP_BITS=1
-    ,parameter BAUD_BITS=16
 )
 (
-    input wire clk,rst,
-    //startTx signal
-    input wire startTx,
-    //dataTx to be transmitted
-    input wire [DATA_BITS-1:0] dataTx,
-    //configurable baud
-    input wire [BAUD_BITS-1:0] divisor,
-    //uartTx line
-    output reg uartTx,
-    //uartBusyTx
-    output wire uartBusyTx
+    input wire baudClk //baud clock generated fromm baud clock generator
+    ,input wire nRst   //active low reset
+    
+    ,input wire startTx //start signal
+    ,input wire [DATA_BITS-1:0] dataTx //input data to be transmitted
+    ,output reg uartTxLine //output serial tx line
+    ,output wire uartTxBusy //uart tx busy flag
 
-`ifdef DEBUG_VERILATOR
-    //debug wires
-   ,output wire debug_baud_clk
-`endif
-
+    //additional config
+    ,input wire stopBits  //0 for 1 stop bit, 1 for 2 stop bits
+    ,input wire parity    //0 for even parity, 1 for odd parity
 );
     reg [1:0] uart_state_tx;
 
     parameter BIT_INDEX=$clog2(DATA_BITS+1);
     reg [BIT_INDEX-1:0] bit_index;
 
-    parameter STOP_BIT_COUNTER=$clog2(STOP_BITS+1);
+    parameter STOP_BIT_COUNTER=2;
     reg [STOP_BIT_COUNTER-1:0] stop_counter;
 
     //UART uart_states
@@ -47,31 +39,13 @@ module UartTx
     //added for even parity
     reg [DATA_BITS-1+1:0] dataReg;
 
-    //from baud generator
-    wire baud_clk;
-
-`ifdef DEBUG_VERILATOR
-    assign debug_baud_clk=baud_clk;
-`endif
-
-
-    //Integer baud generator instance
-    BaudGeneratorInt 
-    #(.BAUD_BITS(BAUD_BITS))
-    gen
-    (
-        .clk(clk),
-        .rst(rst),
-        .divisor(divisor),
-        .baud_clk(baud_clk)
-    );
-
-    always @(posedge baud_clk,posedge rst) 
+    always @(posedge baudClk,negedge nRst) 
     begin
-        if (rst) 
+        //async reset
+        if(nRst)
         begin
             uart_state_tx<=UART_STATE_IDLE;
-            uartTx<=1;
+            uartTxLine<=1;
             bit_index<=0;
         end 
         else 
@@ -79,7 +53,7 @@ module UartTx
             case (uart_state_tx)
                 UART_STATE_IDLE:
                 begin
-                    uartTx<=1;
+                    uartTxLine<=1;
                     if (startTx) 
                     begin
                         bit_index<=0;
@@ -89,10 +63,11 @@ module UartTx
                 
                 UART_STATE_START: 
                 begin
-                    uartTx<=0;
+                    uartTxLine<=0;
                     uart_state_tx<=UART_STATE_DATA;
-                    //put even parity bit within the dataReg
-                    dataReg<={^dataTx,dataTx};
+                    //put odd/even parity based on parity input config
+                    dataReg[DATA_BITS-1:0]<=dataTx;
+                    dataReg[DATA_BITS]<=(parity)? ~(^dataTx):(^dataTx);
                 end
                 
                 UART_STATE_DATA: 
@@ -100,23 +75,23 @@ module UartTx
                     if (bit_index<DATA_BITS+1)
                     begin
                         bit_index<=bit_index+1;
-                    	uartTx<=dataReg[bit_index];
+                        uartTxLine<=dataReg[bit_index];
                     end
                     else
                     begin
                         bit_index<=0;
                         uart_state_tx<=UART_STATE_STOP;
                         stop_counter<=0;
-                        uartTx<=1;
+                        uartTxLine<=1;
                     end
                 end
                 
                 //Single stop bit at the baud rate
                 UART_STATE_STOP: 
                 begin
-                    if(stop_counter<STOP_BITS)
+                    if(stop_counter<stopBits)
                     begin
-                        uartTx<=1;
+                        uartTxLine<=1;
                         stop_counter<=stop_counter+1;
                     end
                     else
@@ -131,5 +106,6 @@ module UartTx
         end
     end
 endmodule
+
 
 `endif //UART_TX_H

@@ -14,7 +14,7 @@ SRC_FILES_PREFIX := $(addprefix ../../,$(SRC_FILES))
 
 # generate verilator sources
 verilate:
-	echo "Compiling $(SRC_FILES)"
+	@echo "Compiling $(SRC_FILES)"
 	verilator \
 	-Wall -Wno-DECLFILENAME \
 	$(VERILATOR_DEFINES_FLAGS) \
