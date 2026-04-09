@@ -89,7 +89,7 @@ module uart_tx
                 //Single stop bit at the baud rate
                 UART_STATE_STOP: 
                 begin
-                    if(stop_counter<stopBits)
+                    if(stop_counter<stopBits+1)
                     begin
                         uartTxLine<=1;
                         stop_counter<=stop_counter+1;

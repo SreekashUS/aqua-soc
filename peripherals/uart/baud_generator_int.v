@@ -4,25 +4,26 @@
 module baud_generator_int
 #(
 	parameter BAUD_BITS=16
+	,parameter OVERSAMPLING_MULT=3
 )
 (
 	input wire sysClk //system clock
 	,input wire nRst //reset
-	,output reg baudClkTx //For TX clock
+	,output wire baudClkTx //For TX clock
 	,output reg baudClkRx //For RX sampling clock
 
 	// config from uart interface
 	,input wire [BAUD_BITS-1:0] baudDivisor //baud divisor bits in integer
-	,input wire [1:0] baudOversampling //0-1x,1-4x,2-8x,3-16x
+	,input wire [OVERSAMPLING_MULT-1:0] baudOversampling
 );
 	reg [BAUD_BITS-1:0] rxCounter;
 	//usually oversampling for 8x, 16x but keeping this as full value for 
-	reg [BAUD_BITS-1:0] txCounter;
+	reg [(1<<OVERSAMPLING_MULT)-1:0] txCounter;
 
 	//counter for Rx
 	always @(posedge sysClk, negedge nRst)
 	begin
-		if(nRst)
+		if(~nRst)
 		begin
 			rxCounter<=0;
 			baudClkRx<=0;
@@ -39,22 +40,15 @@ module baud_generator_int
 
 	always @(posedge baudClkRx,negedge nRst)
 	begin
-		if(nRst)
-		begin
-			baudClkTx<=0;
+		if(~nRst)
 			txCounter<=0;
-		end
 		else
-		begin
-			if(txCounter<(1<<(baudOversampling+1))-1)
-				txCounter<=txCounter+1;
-			else
-			begin
-				txCounter<=0;
-				baudClkTx<=~baudClkTx;
-			end
-		end
+			txCounter<=txCounter+1;
 	end
+
+	wire baud_clk_mult;
+	assign baud_clk_mult=txCounter[baudOversampling-1];
+	assign baudClkTx=(baudOversampling==0)? (baudClkRx):(baud_clk_mult);
 endmodule
 
 `endif //BAUD_GENERATOR_INT_H
