@@ -1,0 +1,8 @@
+%Warning-UNOPTFLAT: peripherals/uart/uart_core.v:56:30: Signal unoptimizable: Feedback to clock or circular logic: 'uart_core.reg_config'
+   56 |  reg [(1+1+1+BAUD_BITS)-1:0] reg_config;
+      |                              ^~~~~~~~~~
+                    peripherals/uart/uart_tx.v:106:1: ... note: In file included from uart_tx.v
+                    peripherals/uart/uart_core.v:5:1: ... note: In file included from uart_core.v
+                    ... Use "/* verilator lint_off UNOPTFLAT */" and lint_on around source to disable this message.
+%Error: Exiting due to 1 warning(s)
+make: *** [Makefile:23: verilate] Error 1

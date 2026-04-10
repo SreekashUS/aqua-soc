@@ -1,8 +1,6 @@
 `ifndef UART_TX_H
 `define UART_TX_H
 
-`include "baud_generator_int.v"
-
 module uart_tx
 #(
     parameter DATA_BITS=8
@@ -14,7 +12,7 @@ module uart_tx
     ,input wire startTx //start signal
     ,input wire [DATA_BITS-1:0] dataTx //input data to be transmitted
     ,output reg uartTxLine //output serial tx line
-    ,output wire uartTxBusy //uart tx busy flag
+    ,output reg uartTxBusy //uart tx busy flag
 
     //additional config
     ,input wire stopBits  //0 for 1 stop bit, 1 for 2 stop bits
@@ -34,15 +32,13 @@ module uart_tx
     localparam UART_STATE_DATA=2;
     localparam UART_STATE_STOP=3;
 
-    assign uartBusyTx=~(uart_state_tx==UART_STATE_IDLE);
-
     //added for even parity
     reg [DATA_BITS-1+1:0] dataReg;
 
     always @(posedge baudClk,negedge nRst) 
     begin
         //async reset
-        if(nRst)
+        if(~nRst)
         begin
             uart_state_tx<=UART_STATE_IDLE;
             uartTxLine<=1;
@@ -63,6 +59,7 @@ module uart_tx
                 
                 UART_STATE_START: 
                 begin
+                    uartTxBusy<=1;
                     uartTxLine<=0;
                     uart_state_tx<=UART_STATE_DATA;
                     //put odd/even parity based on parity input config
@@ -89,7 +86,7 @@ module uart_tx
                 //Single stop bit at the baud rate
                 UART_STATE_STOP: 
                 begin
-                    if(stop_counter<stopBits+1)
+                    if(stop_counter<{1'b0,stopBits})
                     begin
                         uartTxLine<=1;
                         stop_counter<=stop_counter+1;
@@ -98,6 +95,7 @@ module uart_tx
                     begin
                         stop_counter<=0;
                         uart_state_tx<=UART_STATE_IDLE;
+                        uartTxBusy<=0;
                     end
                 end
                 

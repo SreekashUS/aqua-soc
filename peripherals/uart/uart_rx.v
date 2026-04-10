@@ -23,7 +23,7 @@ module uart_rx
 	reg [1:0] uart_state_rx;
 	
 	parameter BIT_INDEX=$clog2(DATA_BITS+1);
-	reg [BIT_INDEX:0] bit_index;
+	reg [BIT_INDEX-1:0] bit_index;
 	reg [DATA_BITS:0] uart_data_rx_parity;
 	reg [1:0] stop_counter;
 
@@ -40,7 +40,7 @@ module uart_rx
 	//calculate correct sample from 3 samples around middle
 	reg [OVERSAMPLING_MULT:0] sample_middle_bit;
 	reg [2:0] uart_sample_middle;
-	reg [OVERSAMPLING_MULT-1:0] sample_count; //sample count based on baudOversampling
+	reg [OVERSAMPLING_MULT:0] sample_count; //sample count based on baudOversampling
 	reg uart_oversampler_start;	//starts sampler
 	reg uart_sample_ready; //signals fsm that filtering is done
 	wire uart_rx_bit;
@@ -67,7 +67,7 @@ module uart_rx
 					end
 					1: //2x oversampling (sample index 1)
 					begin
-						if(sample_count<baudOversampling)
+						if(sample_count<{1'b0,baudOversampling})
 							sample_count<=sample_count+1;
 						else
 						begin
