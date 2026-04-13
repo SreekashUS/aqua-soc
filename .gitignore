@@ -6,7 +6,9 @@ misc
 temp.txt
 ## verilator simulation directory and sim files
 obj_dir
-verilator_sim
+
+## roadmap for individual IP cores
+roadmap
 
 # yosys synthesis files
 synth

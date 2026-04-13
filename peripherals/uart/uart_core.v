@@ -24,8 +24,8 @@ module uart_core
 
 	// ,output wire interrupt //uart interrupt
 
-	,output wire uart_tx_line //uart serial out
-	,input wire uart_rx_line //uart serial in
+	,output wire uartTxLine //uart serial out
+	,input wire uartRxLine //uart serial in
 );
 
 	//physical address mapped
@@ -58,13 +58,15 @@ module uart_core
 	// address misaligned, tx busy, rx ready, err status
 	wire uart_tx_busy;
 
-	reg reg_uart_tx_busy;
+	wire reg_uart_tx_busy;
 
 `ifdef VERILATOR_TEST
 	/* verilator lint_off UNUSED */
 	wire [31:9] unused_data = dataIn[31:9];
 	/* verilator lint_on UNUSED */
 `endif
+
+	assign reg_uart_tx_busy=uart_tx_busy;
 
 	always @(posedge sysClk,negedge nRst)
 	begin
@@ -84,8 +86,12 @@ module uart_core
 		end
 		else
 		begin
-			//1 cycle delay of status reg
-			reg_uart_tx_busy<=uart_tx_busy;
+
+			//not address dependent control reset
+			if(uart_tx_busy)
+			begin
+				reg_control<=0;
+			end
 
 			//validate address range
 			if(addrIn>=UART_REG_BASE && addrIn<=UART_REG_END)
@@ -93,8 +99,11 @@ module uart_core
 				case(addrIn)
 					UART_REG_WRITE_OFF:
 					begin
-						if(wr)
-							reg_write[DATA_BITS-1:0]<=dataIn[DATA_BITS-1:0];
+						if(~reg_uart_tx_busy)
+						begin
+							if(wr)
+								reg_write[DATA_BITS-1:0]<=dataIn[DATA_BITS-1:0];
+						end
 					end
 
 					UART_REG_CONTROL_OFF:
@@ -102,11 +111,9 @@ module uart_core
 						if(~uart_tx_busy)
 						begin
 							if(wr)
+							begin
 								reg_control<=dataIn[0];
-						end
-						else
-						begin
-							reg_control<=0;
+							end
 						end
 					end
 
@@ -169,7 +176,7 @@ module uart_core
 		,.baudClk   (baud_clk_tx)
 		,.startTx   (reg_control)
 		,.dataTx    (reg_write)
-		,.uartTxLine(uart_tx_line)
+		,.uartTxLine(uartTxLine)
 		,.uartTxBusy(uart_tx_busy)
 		,.stopBits  (config_stop_bits)
 		,.parity    (config_parity)
@@ -192,8 +199,8 @@ module uart_core
 	// 	// ,.stopBits        (0)
 	// 	,.baudClk         (baud_clk_rx)
 	// 	,.baudOversampling(reg_config[OVERSAMPLING_MULT+CONFIG_BAUD_BITS-1:CONFIG_BAUD_BITS])
-	// 	// ,.uartRxLine      (reg_config[CONFIG_TEST]? (uart_tx_line):(uart_rx_line))
-	// 	,.uartRxLine      (uart_rx_line)
+	// 	// ,.uartRxLine      (reg_config[CONFIG_TEST]? (uartTxLine):(uartRxLine))
+	// 	,.uartRxLine      (uartRxLine)
 	// 	,.dataRx          (uart_rx_data)
 	// 	,.uartRxReady     (uart_rx_ready)
 	// 	,.uartRxErr       (uart_rx_err)

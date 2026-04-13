@@ -35,6 +35,8 @@ module uart_tx
     //added for even parity
     reg [DATA_BITS-1+1:0] dataReg;
 
+    // assign uartTxBusy=~(uart_state_tx==UART_STATE_IDLE);
+
     always @(posedge baudClk,negedge nRst) 
     begin
         //async reset
@@ -43,7 +45,8 @@ module uart_tx
             uart_state_tx<=UART_STATE_IDLE;
             uartTxLine<=1;
             bit_index<=0;
-        end 
+            uartTxBusy<=0;
+        end
         else 
         begin
             case (uart_state_tx)
@@ -52,20 +55,20 @@ module uart_tx
                     uartTxLine<=1;
                     if (startTx) 
                     begin
+                        uartTxBusy<=1;
                         bit_index<=0;
-                        uart_state_tx<=UART_STATE_START;
+                        // uart_state_tx<=UART_STATE_START;
+                        uartTxLine<=0;
+                        uart_state_tx<=UART_STATE_DATA;
+                        //put odd/even parity based on parity input config
+                        dataReg[DATA_BITS-1:0]<=dataTx;
+                        dataReg[DATA_BITS]<=(parity)? ~(^dataTx):(^dataTx);
                     end
                 end
                 
-                UART_STATE_START: 
-                begin
-                    uartTxBusy<=1;
-                    uartTxLine<=0;
-                    uart_state_tx<=UART_STATE_DATA;
-                    //put odd/even parity based on parity input config
-                    dataReg[DATA_BITS-1:0]<=dataTx;
-                    dataReg[DATA_BITS]<=(parity)? ~(^dataTx):(^dataTx);
-                end
+                // UART_STATE_START: 
+                // begin
+                // end
                 
                 UART_STATE_DATA: 
                 begin
@@ -86,16 +89,24 @@ module uart_tx
                 //Single stop bit at the baud rate
                 UART_STATE_STOP: 
                 begin
-                    if(stop_counter<{1'b0,stopBits})
+                    if(stop_counter<(stopBits? 1:0))
                     begin
                         uartTxLine<=1;
                         stop_counter<=stop_counter+1;
                     end
                     else
                     begin
-                        stop_counter<=0;
-                        uart_state_tx<=UART_STATE_IDLE;
-                        uartTxBusy<=0;
+                        // //streaming option without intermediate idle states
+                        // if(startTx)
+                        // begin
+                        //     uart_state_tx<=UART_STATE_START;
+                        // end
+                        // else
+                        begin
+                            uartTxBusy<=0;
+                            stop_counter<=0;
+                            uart_state_tx<=UART_STATE_IDLE;                            
+                        end
                     end
                 end
                 
