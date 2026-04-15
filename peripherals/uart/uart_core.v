@@ -30,14 +30,14 @@ module uart_core
 
 	//physical address mapped
 	localparam UART_REG_BASE			=32'hF000_0000;
-	localparam UART_REG_WRITE_OFF 		=32'hF000_0000;
-	localparam UART_REG_READ_OFF		=32'hF000_0004;
-	localparam UART_REG_CONTROL_OFF 	=32'hF000_0008;
-	localparam UART_REG_CONFIG_OFF		=32'hF000_000C;
-	localparam UART_REG_STATUS_OFF		=32'hF000_0010;
+	localparam UART_REG_WRITE 			=32'hF000_0000;
+	localparam UART_REG_READ			=32'hF000_0004;
+	localparam UART_REG_CONTROL 		=32'hF000_0008;
+	localparam UART_REG_CONFIG			=32'hF000_000C;
+	localparam UART_REG_STATUS			=32'hF000_0010;
 	localparam UART_REG_END 			=32'hF000_0014;
-	// localparam UART_REG_INTERRUPT_STATUS_OFF=8'h14;
-	// localparam UART_REG_INTERRUPT_MASK_OFF=8'h18;
+	// localparam UART_REG_INTERRUPT_STATUS=8'h14;
+	// localparam UART_REG_INTERRUPT_MASK=8'h18;
 
 	reg [DATA_BITS-1:0] reg_write;
 	// reg [DATA_BITS-1:0] reg_read;
@@ -97,7 +97,7 @@ module uart_core
 			if(addrIn>=UART_REG_BASE && addrIn<=UART_REG_END)
 			begin
 				case(addrIn)
-					UART_REG_WRITE_OFF:
+					UART_REG_WRITE:
 					begin
 						if(~reg_uart_tx_busy)
 						begin
@@ -106,7 +106,7 @@ module uart_core
 						end
 					end
 
-					UART_REG_CONTROL_OFF:
+					UART_REG_CONTROL:
 					begin
 						if(~uart_tx_busy)
 						begin
@@ -117,7 +117,7 @@ module uart_core
 						end
 					end
 
-					UART_REG_CONFIG_OFF:
+					UART_REG_CONFIG:
 					begin
 						if(~uart_tx_busy)
 						begin
@@ -132,7 +132,7 @@ module uart_core
 						end
 					end
 
-					UART_REG_STATUS_OFF:
+					UART_REG_STATUS:
 					begin
 						if(~wr)
 							dataOut<={{31{1'b0}},reg_uart_tx_busy};

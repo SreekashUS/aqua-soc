@@ -148,13 +148,19 @@ void UartCoreTxTest::compare()
 	}
 	else
 	{
+		uint32_t passed=0;
 		for(unsigned int i=0;i<m_sentBytes.size();i++)
 		{
 			if(m_sentBytes[i]==m_rxMonitor.m_received[i])
+			{
+				passed++;
 				std::cout<<"CASE "<<i<<": PASSED\n";
+			}
 			else
 				std::cout<<"CASE "<<i<<": FAILED\n";
 		}
+		std::cout<<"Summary:"<<"\n";
+		std::cout<<"Passed:"<<passed<<"\tFailed:"<<(m_sentBytes.size()-passed)<<"\n";
 	}
 }
 

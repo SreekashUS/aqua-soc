@@ -1,17 +1,17 @@
 TOP:= uart_core
 DESIGN_FILES:= \
-	peripherals/uart/uart_core.v \
-	peripherals/uart/uart_tx.v \
-	peripherals/uart/baud_generator_int.v
+	"peripherals/uart/uart_core.v" \
+	"peripherals/uart/uart_tx.v" \
+	"peripherals/uart/baud_generator_int.v"
 #	peripherals/uart/uart_rx.v \
 
-DIR_PATH:= peripherals/uart
+DIR_PATH:= "peripherals/uart"
 
 # mention source files and include directly
 SRC_FILES:= \
-	peripherals/uart/verilator_sim/src/uart_core_tx_tests.cpp \
-	peripherals/uart/verilator_sim/src/uart_core_rand.cpp \
-	peripherals/uart/verilator_sim/src/uart_core_tx_tests_main.cpp
+	"peripherals/uart/verilator_sim/src/uart_core_tx_tests.cpp" \
+	"peripherals/uart/verilator_sim/src/uart_core_rand.cpp" \
+	"peripherals/uart/verilator_sim/src/uart_core_tx_tests_main.cpp"
 SRC_INCLUDES:= \
 	"-Iperipherals/verilator_sim/include"
 

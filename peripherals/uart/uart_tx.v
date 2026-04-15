@@ -57,18 +57,18 @@ module uart_tx
                     begin
                         uartTxBusy<=1;
                         bit_index<=0;
-                        // uart_state_tx<=UART_STATE_START;
-                        uartTxLine<=0;
-                        uart_state_tx<=UART_STATE_DATA;
-                        //put odd/even parity based on parity input config
-                        dataReg[DATA_BITS-1:0]<=dataTx;
-                        dataReg[DATA_BITS]<=(parity)? ~(^dataTx):(^dataTx);
+                        uart_state_tx<=UART_STATE_START;
                     end
                 end
                 
-                // UART_STATE_START: 
-                // begin
-                // end
+                UART_STATE_START: 
+                begin                    
+                    //put odd/even parity based on parity input config
+                    dataReg[DATA_BITS-1:0]<=dataTx;
+                    dataReg[DATA_BITS]<=(parity)? ~(^dataTx):(^dataTx);
+                    uartTxLine<=0;
+                    uart_state_tx<=UART_STATE_DATA;
+                end
                 
                 UART_STATE_DATA: 
                 begin
