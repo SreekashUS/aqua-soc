@@ -5,7 +5,6 @@ module uart_rx
 #(
 	parameter DATA_BITS=8
 	,parameter ERR_BITS=2
-	,parameter OVERSAMPLING_MULT=3
 )
 (
 	input wire baudClk //baud clock with oversampling
@@ -15,10 +14,11 @@ module uart_rx
 	,output reg [DATA_BITS-1:0] dataRx //output data received
 	,output reg uartRxReady //status flag for complete frame received
 	,output reg [ERR_BITS-1:0] uartRxErr //type of error occured
+	,output wire uartRxBusy //Busy flag
 
 	,input wire stopBits //0 for 1 stop bit, 1 for 2 stop bits
 	,input wire parity	 //0 for even parity, 1 for odd parity
-	,input wire [OVERSAMPLING_MULT-1:0] baudOversampling //baud oversample rate
+	,input wire baudOversampling //baud oversample rate
 );
 	reg [1:0] uart_state_rx;
 	
@@ -36,89 +36,45 @@ module uart_rx
 	localparam UART_ERR_FRAME=2;
 
 	reg uart_rx_parity;
-
-	//calculate correct sample from 3 samples around middle
-	reg [OVERSAMPLING_MULT:0] sample_middle_bit;
-	reg [2:0] uart_sample_middle;
-	reg [OVERSAMPLING_MULT:0] sample_count; //sample count based on baudOversampling
+	reg uart_rx_ready_1clk;
+	reg uart_rx_ready_2clk;
 	reg uart_oversampler_start;	//starts sampler
-	reg uart_sample_ready; //signals fsm that filtering is done
+	wire uart_oversampler_start_wire;
+	assign uart_oversampler_start_wire=uart_oversampler_start;
+	wire uart_sample_ready; //signals fsm that filtering is done
+
 	wire uart_rx_bit;
-	assign uart_rx_bit=(uart_sample_middle[0]&uart_sample_middle[1])|(uart_sample_middle[1]&uart_sample_middle[2])|(uart_sample_middle[2]&uart_sample_middle[0]);
 
-	always @(posedge baudClk,negedge nRst)
-	begin
-		if(~nRst)
-		begin
-			uart_oversampler_start<=0;
-			uart_sample_middle<=0;
-			sample_count<=0;
-		end
-		else
-		begin
-			if(uart_oversampler_start)
-			begin
-				case(baudOversampling)
-					0: //1x oversampling (direct uartRxLine)
-					begin
-						uart_sample_middle[0]<=uartRxLine;
-						uart_sample_middle[1]<=uartRxLine;
-						uart_sample_ready<=1;
-					end
-					1: //2x oversampling (sample index 1)
-					begin
-						if(sample_count<{1'b0,baudOversampling})
-							sample_count<=sample_count+1;
-						else
-						begin
-							uart_sample_middle[0]<=uartRxLine;
-							uart_sample_middle[1]<=uartRxLine;
-							uart_sample_ready<=1;
-						end
-					end
+	uart_rx_oversampler
+	uart_rx_oversampler_0
+	(
+		.baudClk              (baudClk)
+		,.nRst                (nRst)
+		,.uartRxLine          (uartRxLine)
+		,.baudOversampling    (baudOversampling)
+		,.uartOverSamplerStart(uart_oversampler_start_wire)
+		,.uartSampleBit       (uart_rx_bit)
+		,.uartSampleReady     (uart_sample_ready)
+	);
 
-					//higher oversampling rate 4x (can use samples 1,2,3)
-					default:
-					begin
-						//set middle bit
-						sample_middle_bit<=(1<<(baudOversampling-1));
-
-						//sample 3 middle bits
-						if(sample_count==sample_middle_bit-1)
-							uart_sample_middle[0]<=uartRxLine;
-						else if(sample_count==sample_middle_bit)
-							uart_sample_middle[1]<=uartRxLine;
-						else if(sample_count==sample_middle_bit+1)
-							uart_sample_middle[2]<=uartRxLine;
-						
-						if(sample_count==(1<<baudOversampling)-1)
-						begin
-							uart_sample_ready<=1;
-							sample_count<=0;
-						end
-						else
-						begin
-							sample_count<=sample_count+1;
-							uart_sample_ready<=0;					
-						end
-					end
-				endcase
-			end
-		end
-	end
+	assign uartRxBusy=(uart_state_rx!=UART_STATE_IDLE);
+	assign uartRxReady=uart_rx_ready_1clk^uart_rx_ready_2clk;
 
 	always @(posedge baudClk,negedge nRst)
 	begin
 		if(~nRst)
 		begin
 			uart_state_rx<=UART_STATE_IDLE;
-			uartRxReady<=0;
 			bit_index<=0;
-			uart_sample_ready<=0;
 			uart_data_rx_parity<=0;
+			uart_oversampler_start<=0;
+			dataRx<=0;
+			uart_rx_ready_1clk<=0;
+			uart_rx_ready_2clk<=0;
 		end
 		else
 		begin
+			uart_rx_ready_2clk<=uart_rx_ready_1clk;
 			case(uart_state_rx)
 				UART_STATE_IDLE:
 				begin
@@ -130,8 +86,10 @@ module uart_rx
 						if(uart_sample_ready && uart_rx_bit==0)
 						begin
 							uart_state_rx<=UART_STATE_DATA;
+							
 							uartRxErr<=0;
-							uartRxReady<=0;
+							uart_rx_ready_1clk<=0;
+							uart_rx_ready_2clk<=0;
 							bit_index<=0;
 							dataRx<=0;
 							uart_rx_parity<=0;
@@ -178,7 +136,8 @@ module uart_rx
 								end
 							else
 							begin
-								uartRxReady<=1;
+								uart_rx_ready_1clk<=1;
+								dataRx<=uart_data_rx_parity[DATA_BITS-1:0];
 								uart_state_rx<=UART_STATE_IDLE;								
 							end
 						end

@@ -7,10 +7,9 @@ module uart_core
 #(
 	parameter DATA_BITS=8
 	,parameter BAUD_BITS=16
-	,parameter OVERSAMPLING_MULT=3
 	,parameter ERR_BITS=2
 
-	,parameter UART_ADDR_BITS=32
+	,parameter UART_ADDR_BITS=8
 	,parameter UART_DATA_BITS=32
 )
 (
@@ -22,43 +21,54 @@ module uart_core
 	,output reg [UART_DATA_BITS-1:0] dataOut //uart data out
 	,input wire wr //write-read signal
 
-	// ,output wire interrupt //uart interrupt
+	,output wire intr //uart interrupt
 
 	,output wire uartTxLine //uart serial out
 	,input wire uartRxLine //uart serial in
 );
 
-	//physical address mapped
-	localparam UART_REG_BASE			=32'hF000_0000;
-	localparam UART_REG_WRITE 			=32'hF000_0000;
-	localparam UART_REG_READ			=32'hF000_0004;
-	localparam UART_REG_CONTROL 		=32'hF000_0008;
-	localparam UART_REG_CONFIG			=32'hF000_000C;
-	localparam UART_REG_STATUS			=32'hF000_0010;
-	localparam UART_REG_END 			=32'hF000_0014;
-	// localparam UART_REG_INTERRUPT_STATUS=8'h14;
-	// localparam UART_REG_INTERRUPT_MASK=8'h18;
+	//local register mapped addresses
+	localparam UART_REG_BASE		=8'h00;
+	localparam UART_REG_WRITE 		=8'h00;
+	localparam UART_REG_READ		=8'h04;
+	localparam UART_REG_CONFIG		=8'h08;
+	localparam UART_REG_STATUS		=8'h0C;
+	localparam UART_REG_INT_STATUS	=8'h10;
+	localparam UART_REG_INT_MASK  	=8'h14;
+	localparam UART_REG_INT_CLR 	=8'h18;
+	localparam UART_REG_END 		=8'h1C;
+	
+	parameter OVERSAMPLING_MULT=1;
 
 	reg [DATA_BITS-1:0] reg_write;
-	// reg [DATA_BITS-1:0] reg_read;
+	reg [DATA_BITS-1:0] reg_read;
+
+	//interrupt control
+	reg [(ERR_BITS+1)-1:0] reg_int_mask;
+	reg [(ERR_BITS+1)-1:0] reg_int_signals;
 
 	// reg [UART_DATA_BITS-1:0] reg_out_gpr;
-	// wire [DATA_BITS-1:0] uart_rx_data;
+	wire [DATA_BITS-1:0] uart_rx_data;
 	
 	//add options like tx enable, rx enable
-	reg reg_control;
+	reg reg_start_tx;
 	
 	// test mode, parity, stop bits, oversampling bits, baud bits
 	reg config_test_mode;
+	wire config_test_mode_wire;
+
+	assign config_test_mode_wire=config_test_mode;
+
 	reg config_parity;
 	reg config_stop_bits;
-	reg [OVERSAMPLING_MULT-1:0] config_os;
+	reg config_os;
 	reg [BAUD_BITS-1:0] config_baud;
 
 	// address misaligned, tx busy, rx ready, err status
 	wire uart_tx_busy;
 
 	wire reg_uart_tx_busy;
+	wire reg_uart_rx_busy;
 
 `ifdef VERILATOR_TEST
 	/* verilator lint_off UNUSED */
@@ -66,7 +76,8 @@ module uart_core
 	/* verilator lint_on UNUSED */
 `endif
 
-	assign reg_uart_tx_busy=uart_tx_busy;
+	assign reg_uart_tx_busy=uart_tx_busy|reg_start_tx;
+	assign intr=|(reg_int_mask&reg_int_signals);
 
 	always @(posedge sysClk,negedge nRst)
 	begin
@@ -74,7 +85,7 @@ module uart_core
 		begin
 			reg_write<=0;
 			// reg_read<=0;
-			reg_control<=0;
+			reg_start_tx<=0;
 
 			config_test_mode<=0;
 			config_parity<=0;
@@ -82,68 +93,84 @@ module uart_core
 			config_os<=0;
 			config_baud<=0;
 
-			// int_addr<=0;
+			reg_int_mask<=0;
+			reg_int_signals<=0;
 		end
 		else
 		begin
+			reg_read<=uart_rx_data;
+			reg_int_signals<={uart_rx_err,uart_rx_ready};
 
 			//not address dependent control reset
 			if(uart_tx_busy)
-			begin
-				reg_control<=0;
-			end
+				reg_start_tx<=0;
 
-			//validate address range
-			if(addrIn>=UART_REG_BASE && addrIn<=UART_REG_END)
-			begin
-				case(addrIn)
-					UART_REG_WRITE:
+			case(addrIn)
+				UART_REG_WRITE:
+				begin
+					if(~reg_uart_tx_busy)
 					begin
-						if(~reg_uart_tx_busy)
+						if(wr)
 						begin
-							if(wr)
-								reg_write[DATA_BITS-1:0]<=dataIn[DATA_BITS-1:0];
+							reg_write[DATA_BITS-1:0]<=dataIn[DATA_BITS-1:0];
+							reg_start_tx<=1;
 						end
 					end
+				end
 
-					UART_REG_CONTROL:
-					begin
-						if(~uart_tx_busy)
-						begin
-							if(wr)
-							begin
-								reg_control<=dataIn[0];
-							end
-						end
-					end
-
-					UART_REG_CONFIG:
-					begin
-						if(~uart_tx_busy)
-						begin
-							if(wr)
-							begin
-								config_baud<=dataIn[BAUD_BITS-1:0];
-								config_os<=dataIn[BAUD_BITS+(OVERSAMPLING_MULT-1):BAUD_BITS];
-								config_parity<=dataIn[BAUD_BITS+OVERSAMPLING_MULT];
-								config_stop_bits<=dataIn[BAUD_BITS+OVERSAMPLING_MULT+1];
-								config_test_mode<=dataIn[BAUD_BITS+OVERSAMPLING_MULT+2];
-							end
-						end
-					end
-
-					UART_REG_STATUS:
+				UART_REG_READ:
+				begin
+					if(uart_rx_ready)
 					begin
 						if(~wr)
-							dataOut<={{31{1'b0}},reg_uart_tx_busy};
+							dataOut<={24'd0,reg_read};
 					end
+				end
 
-					default:
+				UART_REG_CONFIG:
+				begin
+					if(~uart_tx_busy)
 					begin
-						//blank for now
+						if(wr)
+						begin
+							config_baud<=dataIn[BAUD_BITS-1:0]; //16
+							config_os<=dataIn[BAUD_BITS]; //1
+							config_parity<=dataIn[BAUD_BITS+OVERSAMPLING_MULT]; //1
+							config_stop_bits<=dataIn[BAUD_BITS+OVERSAMPLING_MULT+1]; //1
+							config_test_mode<=dataIn[BAUD_BITS+OVERSAMPLING_MULT+2]; //1
+						end
 					end
-				endcase
-			end
+				end
+
+				UART_REG_STATUS:
+				begin
+					if(~wr)
+						dataOut<={{29{1'b0}},uart_rx_ready,reg_uart_rx_busy,reg_uart_tx_busy};
+				end
+
+				UART_REG_INT_STATUS:
+				begin
+					if(~wr)
+						dataOut<={{(32-(ERR_BITS+1)){1'b0}},{uart_rx_err,uart_rx_ready}};
+				end
+
+				UART_REG_INT_MASK:
+				begin
+					if(wr)
+						reg_int_mask<=dataIn[(ERR_BITS+1)-1:0];
+				end
+
+				UART_REG_INT_CLR:
+				begin
+					if(wr)
+						reg_int_signals<=reg_int_signals&(~dataIn[(ERR_BITS+1)-1:0]);
+				end
+
+				default:
+				begin
+					dataOut<=0;
+				end
+			endcase
 		end
 	end
 
@@ -174,7 +201,7 @@ module uart_core
 	(
 		.nRst      (nRst)
 		,.baudClk   (baud_clk_tx)
-		,.startTx   (reg_control)
+		,.startTx   (reg_start_tx)
 		,.dataTx    (reg_write)
 		,.uartTxLine(uartTxLine)
 		,.uartTxBusy(uart_tx_busy)
@@ -182,29 +209,26 @@ module uart_core
 		,.parity    (config_parity)
 	);
 
-	// wire uart_rx_ready;
-	// wire [ERR_STATUS:0] uart_rx_err;
-	// uart_rx
-	// #(
-	// 	.DATA_BITS        (DATA_BITS)
-	// 	,.ERR_BITS         (ERR_BITS)
-	// 	,.OVERSAMPLING_MULT(OVERSAMPLING_MULT)
-	// )
-	// uart_rx_0
-	// (
-	// 	.nRst            (nRst)
-	// 	,.parity          (reg_config[CONFIG_PARITY])
-	// 	// ,.parity          (0)
-	// 	,.stopBits        (reg_config[CONFIG_STOP_BITS])
-	// 	// ,.stopBits        (0)
-	// 	,.baudClk         (baud_clk_rx)
-	// 	,.baudOversampling(reg_config[OVERSAMPLING_MULT+CONFIG_BAUD_BITS-1:CONFIG_BAUD_BITS])
-	// 	// ,.uartRxLine      (reg_config[CONFIG_TEST]? (uartTxLine):(uartRxLine))
-	// 	,.uartRxLine      (uartRxLine)
-	// 	,.dataRx          (uart_rx_data)
-	// 	,.uartRxReady     (uart_rx_ready)
-	// 	,.uartRxErr       (uart_rx_err)
-	// );
+	wire uart_rx_ready;
+	wire [ERR_BITS-1:0] uart_rx_err;
+	uart_rx
+	#(
+		.DATA_BITS        (DATA_BITS)
+		,.ERR_BITS         (ERR_BITS)
+	)
+	uart_rx_0
+	(
+		.nRst             (nRst)
+		,.parity          (config_parity)
+		,.stopBits        (config_stop_bits)
+		,.baudClk         (baud_clk_rx)
+		,.baudOversampling(config_os)
+		,.uartRxLine      (config_test_mode_wire? uartTxLine:uartRxLine)
+		,.dataRx          (uart_rx_data)
+		,.uartRxReady     (uart_rx_ready)
+		,.uartRxErr       (uart_rx_err)
+		,.uartRxBusy      (reg_uart_rx_busy)
+	);
 
 endmodule
 

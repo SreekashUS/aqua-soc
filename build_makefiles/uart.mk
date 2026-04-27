@@ -2,8 +2,9 @@ TOP:= uart_core
 DESIGN_FILES:= \
 	"peripherals/uart/rtl/uart_core.v" \
 	"peripherals/uart/rtl/uart_tx.v" \
-	"peripherals/uart/rtl/baud_generator_int.v"
-#	peripherals/uart/uart_rx.v \
+	"peripherals/uart/rtl/baud_generator_int.v" \
+	"peripherals/uart/rtl/uart_rx.v" \
+	"peripherals/uart/rtl/uart_rx_oversampler.v"
 
 DIR_PATH:= "peripherals/uart"
 
