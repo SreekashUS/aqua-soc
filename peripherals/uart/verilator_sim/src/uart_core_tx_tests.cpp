@@ -79,6 +79,7 @@ void UartCoreTxTest::setConfig(uint32_t config)
 {
 	//cannot change config while uart is busy
 	while(this->readReg(UART_REG_STATUS)!=0);
+
 	this->writeReg(UART_REG_CONFIG,config);
 	m_config=config;
 	P_BAUD_CYCLE=m_config&0x0000FFFF;
@@ -92,7 +93,7 @@ void UartCoreTxTest::sendByte(uint8_t byte,bool stream)
 	uint32_t data=(uint32_t) byte;
 	while(this->readReg(UART_REG_STATUS)!=0);
 	this->writeReg(UART_REG_WRITE,data);
-	this->writeReg(UART_REG_CONTROL,1);	//send 1 for starting transmission
+	// this->writeReg(UART_REG_CONTROL,1);	//send 1 for starting transmission
 
 	if(stream)
 		this->runUntilEOF();
@@ -103,13 +104,30 @@ void UartCoreTxTest::sendByte(uint8_t byte,bool stream)
 	}
 }
 
+void UartCoreTxTest::sendByteRxWait(uint8_t byte)
+{
+	uint32_t data=(uint32_t) byte;
+	while(this->readReg(UART_REG_STATUS)!=0);
+	this->writeReg(UART_REG_WRITE,data);
+	// this->writeReg(UART_REG_CONTROL,1);	//send 1 for starting transmission
+
+	while(true)
+	{
+		if(this->readReg(UART_REG_STATUS)==4)
+			break;
+	}
+}
+
 void UartCoreTxTest::sendBytes(uint8_t* bytes,uint32_t size)
 {
 	for(uint32_t i=0;i<size;i++)
 	{
-		this->sendByte(bytes[i],true);
+		this->sendByte(bytes[i],false);
 		this->m_sentBytes.push_back(bytes[i]);
 	}
+	//wait 3 clk cycle for rx to receive the frame completely for the last byte
+	for(uint32_t i=0;i<16;i++)
+		this->tick();
 }
 
 void UartCoreTxTest::sendBytesV(std::vector<uint8_t> bytes)
@@ -119,6 +137,9 @@ void UartCoreTxTest::sendBytesV(std::vector<uint8_t> bytes)
 		this->sendByte(bytes[i],true);
 		this->m_sentBytes.push_back(bytes[i]);
 	}
+	//wait 3 clk cycle for rx to receive the frame completely for the last byte
+	for(uint32_t i=0;i<16;i++)
+		this->tick();
 }
 
 void UartCoreTxTest::runUntilEOF()
@@ -127,7 +148,7 @@ void UartCoreTxTest::runUntilEOF()
 	int OVERSAMPLING=(1<<(m_config>>16)&7);
 	// std::cout<<"OS"<<OVERSAMPLING<<"\n";
 	// std::cout<<stopBits<<"\n";
-	uint32_t stopCycle=m_clkCycles+((OVERSAMPLING*P_BAUD_CYCLE)*(1+8+1+stopBits));
+	uint32_t stopCycle=m_clkCycles+((OVERSAMPLING*P_BAUD_CYCLE)*(1+8+1+stopBits+1));
 	// std::cout<<"m_clkCycles"<<m_clkCycles<<"stopCycle"<<stopCycle<<"\n";
 	
 	while(m_clkCycles<=stopCycle)
@@ -136,7 +157,13 @@ void UartCoreTxTest::runUntilEOF()
 
 void UartCoreTxTest::runUntilTxFree()
 {
-	while(this->readReg(UART_REG_STATUS)!=0);
+	while(true)
+	{
+		if((this->readReg(UART_REG_STATUS)&1)==0)
+		{
+			break;
+		}
+	}
 }
 
 
@@ -164,25 +191,70 @@ void UartCoreTxTest::compare()
 	}
 }
 
-//SimUartCoreRx
-//Ctor
-// SimUartCoreRx(uint32_t bitDuration,uint32_t config)
-// {
-// 	m_bitDuration=bitDuration;
-// 	m_config=config;
-// 	m_parity=(m_config>>(16+30))&1;
-// 	m_stopBits=(m_config>>(16+3+1))&1;
-// 	m_prevValue=1;
-// 	m_rxActive=false;
-// }
+void UartCoreTxTest::sendAndLoopBack(uint8_t* bytes, uint32_t size)
+{
+	//verify config first
+	if((m_config>>16)&0x8!=0x8)	//loopback disabled
+	{
+		std::cout<<"Set loopback configuration before running loopback test\n";
+		return;
+	}
 
-// //Dtor
-// ~SimUartCoreRx()
-// {
+	uint32_t passed=0;
+	for(uint32_t i=0;i<size;i++)
+	{
+		//wait for rx to complete reconstruction of byte frame
+		this->sendByteRxWait(bytes[i]);
 
-// }
+		// std::cout<<this->readReg(UART_REG_READ)<<"\n";
+		//assert byte that is received
+		if(this->readReg(UART_REG_READ)==bytes[i])
+		{
+			passed++;
+			std::cout<<"CASE "<<i<<": PASSED\n";
+		}
+		else
+			std::cout<<"CASE "<<i<<": FAILED\n";
+		// assert(this->readReg(UART_REG_READ)==bytes[i]);
+	}
 
-// void run(uint32_t timestamp,int txLine)
-// {
+	std::cout<<"Summary:"<<"\n";
+	std::cout<<"Passed:"<<passed<<"\tFailed:"<<(size-passed)<<"\n";
 
-// }
+}
+
+void UartCoreTxTest::sendAndLoopBackV(std::vector<uint8_t> bytes)
+{
+	//verify config first
+	if((m_config>>16)&0x8!=0x8)	//loopback disabled
+	{
+		std::cout<<"Set loopback configuration before running loopback test\n";
+		return;
+	}
+
+	uint32_t passed=0;
+	for(uint32_t i=0;i<bytes.size();i++)
+	{
+		//wait for rx to complete reconstruction of byte frame
+		this->sendByteRxWait(bytes[i]);
+
+		// std::cout<<this->readReg(UART_REG_READ)<<"\n";
+		//assert byte that is received
+		if(this->readReg(UART_REG_READ)==bytes[i])
+		{
+			passed++;
+			std::cout<<"CASE "<<i<<": PASSED\n";
+		}
+		else
+			std::cout<<"CASE "<<i<<": FAILED\n";
+		// assert(this->readReg(UART_REG_READ)==bytes[i]);
+	}
+
+	std::cout<<"Summary:"<<"\n";
+	std::cout<<"Passed:"<<passed<<"\tFailed:"<<(bytes.size()-passed)<<"\n";
+}
+
+void UartCoreTxTest::setIntrMask(uint8_t mask)
+{
+	this->writeReg(UART_REG_INT_MASK,mask);
+}

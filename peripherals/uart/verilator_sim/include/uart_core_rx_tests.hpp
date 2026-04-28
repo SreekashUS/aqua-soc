@@ -1,11 +1,5 @@
-#ifndef UART_CORE_TX_TESTS_HPP
-#define UART_CORE_TX_TESTS_HPP
-
-/**
- * Tests done:
- * 1. tx transmit and receive (comparison)
- * 2. multiple baud rates (comparison with baud rates and system clock)
- */
+#ifndef UART_CORE_RX_TESTS_HPP
+#define UART_CORE_RX_TESTS_HPP
 
 #include <vector>
 #include <random>
@@ -22,7 +16,7 @@ typedef struct rx_packet_info
 	uint8_t error;	//type of error=>parity, frame error etc
 }rxPacket;
 
-class UartRxModel 
+class UartTxModel 
 {
 public:
     enum State {IDLE,START,DATA,STOP};
@@ -167,9 +161,6 @@ public:
 	//send byte
 	void sendByte(uint8_t byte,bool stream);
 
-    //send byte but wait for rx complete (loopback mode)
-    void sendByteRxWait(uint8_t byte);
-
 	//stream bytes
 	void sendBytes(uint8_t* bytes,uint32_t size);
 
@@ -184,15 +175,6 @@ public:
 
 	//Compare sent and received bytes
 	void compare();
-
-    //Loopback test for tx and rx
-    void sendAndLoopBack(uint8_t* bytes, uint32_t size);
-
-    //Loopback test via Vector
-    void sendAndLoopBackV(std::vector<uint8_t> bytes);
-
-    //interrupt mask
-    void setIntrMask(uint8_t mask);
 };
 
-#endif //UART_CORE_TX_TESTS_HPP
+#endif //UART_CORE_RX_TESTS_HPP
