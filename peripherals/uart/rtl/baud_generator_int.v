@@ -6,7 +6,7 @@ module baud_generator_int
 	parameter BAUD_BITS=16
 )
 (
-	input wire sysClk //system clock
+	input wire clk //system clock
 	,input wire nRst //reset
 	,output wire baudClkTx //For TX clock
 	,output reg baudClkRx //For RX sampling clock
@@ -20,7 +20,7 @@ module baud_generator_int
 	reg [(1<<4)-1:0] txCounter;
 
 	//counter for Rx
-	always @(posedge sysClk, negedge nRst)
+	always @(posedge clk, negedge nRst)
 	begin
 		if(~nRst)
 		begin

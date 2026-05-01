@@ -13,7 +13,7 @@ module uart_core
 	,parameter UART_DATA_BITS=32
 )
 (
-	input wire sysClk //system uart clock
+	input wire clk //system uart clock
 	,input wire nRst //active low reset for uart
 
 	,input wire [UART_ADDR_BITS-1:0] addrIn //uart memory mapped address
@@ -35,8 +35,9 @@ module uart_core
 	localparam UART_REG_STATUS		=8'h0C;
 	localparam UART_REG_INT_STATUS	=8'h10;
 	localparam UART_REG_INT_MASK  	=8'h14;
-	localparam UART_REG_INT_CLR 	=8'h18;
-	localparam UART_REG_END 		=8'h1C;
+	localparam UART_REG_INT_PEND	=8'h18;
+	localparam UART_REG_INT_CLR 	=8'h1C;
+	localparam UART_REG_END 		=8'h20;
 	
 	parameter OVERSAMPLING_MULT=1;
 
@@ -46,6 +47,7 @@ module uart_core
 	//interrupt control
 	reg [(ERR_BITS+1)-1:0] reg_int_mask;
 	reg [(ERR_BITS+1)-1:0] reg_int_signals;
+	reg [(ERR_BITS+1)-1:0] reg_int_pend;
 
 	// reg [UART_DATA_BITS-1:0] reg_out_gpr;
 	wire [DATA_BITS-1:0] uart_rx_data;
@@ -77,9 +79,10 @@ module uart_core
 `endif
 
 	assign reg_uart_tx_busy=uart_tx_busy|reg_start_tx;
-	assign intr=|(reg_int_mask&reg_int_signals);
 
-	always @(posedge sysClk,negedge nRst)
+	assign intr=|(reg_int_pend);
+
+	always @(posedge clk,negedge nRst)
 	begin
 		if(~nRst)
 		begin
@@ -95,11 +98,13 @@ module uart_core
 
 			reg_int_mask<=0;
 			reg_int_signals<=0;
+			reg_int_pend<=0;
 		end
 		else
 		begin
 			reg_read<=uart_rx_data;
 			reg_int_signals<={uart_rx_err,uart_rx_ready};
+			reg_int_pend<=reg_int_mask&reg_int_signals;
 
 			//not address dependent control reset
 			if(uart_tx_busy)
@@ -129,7 +134,7 @@ module uart_core
 
 				UART_REG_CONFIG:
 				begin
-					if(~uart_tx_busy)
+					if(~(uart_tx_busy|reg_uart_rx_busy))
 					begin
 						if(wr)
 						begin
@@ -139,6 +144,10 @@ module uart_core
 							config_stop_bits<=dataIn[BAUD_BITS+OVERSAMPLING_MULT+1]; //1
 							config_test_mode<=dataIn[BAUD_BITS+OVERSAMPLING_MULT+2]; //1
 						end
+					end
+					else if(~wr)
+					begin
+						dataOut<={{12{1'd0}},config_test_mode,config_stop_bits,config_parity,config_os,config_baud};
 					end
 				end
 
@@ -158,6 +167,8 @@ module uart_core
 				begin
 					if(wr)
 						reg_int_mask<=dataIn[(ERR_BITS+1)-1:0];
+					else
+						dataOut<={{(32-(ERR_BITS+1)){1'd0}},reg_int_mask};
 				end
 
 				UART_REG_INT_CLR:
@@ -184,7 +195,7 @@ module uart_core
 	)
 	baud_generator_int_0
 	(
-		.sysClk          (sysClk)
+		.clk          (clk)
 		,.nRst            (nRst)
 		,.baudClkTx       (baud_clk_tx)
 		,.baudClkRx       (baud_clk_rx)
