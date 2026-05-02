@@ -32,12 +32,13 @@ module uart_core
 	localparam UART_REG_WRITE 		=8'h00;
 	localparam UART_REG_READ		=8'h04;
 	localparam UART_REG_CONFIG		=8'h08;
-	localparam UART_REG_STATUS		=8'h0C;
-	localparam UART_REG_INT_STATUS	=8'h10;
-	localparam UART_REG_INT_MASK  	=8'h14;
-	localparam UART_REG_INT_PEND	=8'h18;
-	localparam UART_REG_INT_CLR 	=8'h1C;
-	localparam UART_REG_END 		=8'h20;
+	localparam UART_REG_CONTROL		=8'h0C;
+	localparam UART_REG_STATUS		=8'h10;
+	localparam UART_REG_INT_STATUS	=8'h14;
+	localparam UART_REG_INT_MASK  	=8'h18;
+	localparam UART_REG_INT_PEND	=8'h1C;
+	localparam UART_REG_INT_CLR 	=8'h20;
+	localparam UART_REG_END 		=8'h24;
 	
 	parameter OVERSAMPLING_MULT=1;
 
@@ -55,6 +56,18 @@ module uart_core
 	//add options like tx enable, rx enable
 	reg reg_start_tx;
 	
+	// additional control/configuration
+	reg reg_enable_tx;
+	reg reg_enable_rx;
+	reg reg_reset_tx;
+	reg reg_reset_tx_in;
+	reg reg_reset_tx_1clk;
+	reg reg_reset_rx;
+	reg reg_reset_rx_in;
+	reg reg_reset_rx_1clk;
+
+	wire test_available;
+	assign test_available=reg_enable_tx&reg_enable_rx;
 	// test mode, parity, stop bits, oversampling bits, baud bits
 	reg config_test_mode;
 	wire config_test_mode_wire;
@@ -90,6 +103,15 @@ module uart_core
 			// reg_read<=0;
 			reg_start_tx<=0;
 
+			reg_enable_tx<=0;
+			reg_enable_rx<=0;
+			reg_reset_tx<=1;
+			reg_reset_rx<=1;
+			reg_reset_tx_1clk<=0;
+			reg_reset_rx_1clk<=0;
+			reg_reset_tx_in<=0;
+			reg_reset_rx_in<=0;
+
 			config_test_mode<=0;
 			config_parity<=0;
 			config_stop_bits<=0;
@@ -102,6 +124,13 @@ module uart_core
 		end
 		else
 		begin
+			//soft resets
+			reg_reset_tx_1clk<=reg_reset_tx_in;
+			reg_reset_rx_1clk<=reg_reset_rx_in;
+
+			reg_reset_tx<=(~reg_reset_tx_1clk)&reg_reset_tx_in;
+			reg_reset_rx<=(~reg_reset_rx_1clk)&reg_reset_rx_in;
+
 			reg_read<=uart_rx_data;
 			reg_int_signals<={uart_rx_err,uart_rx_ready};
 			reg_int_pend<=reg_int_mask&reg_int_signals;
@@ -113,7 +142,7 @@ module uart_core
 			case(addrIn)
 				UART_REG_WRITE:
 				begin
-					if(~reg_uart_tx_busy)
+					if(reg_enable_tx&~reg_uart_tx_busy)
 					begin
 						if(wr)
 						begin
@@ -125,7 +154,7 @@ module uart_core
 
 				UART_REG_READ:
 				begin
-					if(uart_rx_ready)
+					if(reg_enable_rx&uart_rx_ready)
 					begin
 						if(~wr)
 							dataOut<={24'd0,reg_read};
@@ -134,20 +163,42 @@ module uart_core
 
 				UART_REG_CONFIG:
 				begin
-					if(~(uart_tx_busy|reg_uart_rx_busy))
+					if(wr)
 					begin
-						if(wr)
+						if(~(uart_tx_busy|reg_uart_rx_busy))
 						begin
 							config_baud<=dataIn[BAUD_BITS-1:0]; //16
 							config_os<=dataIn[BAUD_BITS]; //1
 							config_parity<=dataIn[BAUD_BITS+OVERSAMPLING_MULT]; //1
 							config_stop_bits<=dataIn[BAUD_BITS+OVERSAMPLING_MULT+1]; //1
-							config_test_mode<=dataIn[BAUD_BITS+OVERSAMPLING_MULT+2]; //1
 						end
 					end
-					else if(~wr)
+					// issue from verilator
+					// else
+					// begin
+					// 	dataOut<={{13{1'd0}},config_stop_bits,config_parity,config_os,config_baud};
+					// end
+				end
+
+				UART_REG_CONTROL:
+				begin
+					if(wr)
 					begin
-						dataOut<={{12{1'd0}},config_test_mode,config_stop_bits,config_parity,config_os,config_baud};
+						if(~uart_tx_busy&(reg_enable_tx^dataIn[BAUD_BITS+OVERSAMPLING_MULT+2]))
+							reg_enable_tx<=~reg_enable_tx;
+						if(~reg_uart_rx_busy&(reg_enable_rx^dataIn[BAUD_BITS+OVERSAMPLING_MULT+3]))
+							reg_enable_rx<=~reg_enable_rx;
+
+						reg_reset_tx_in<=~dataIn[BAUD_BITS+OVERSAMPLING_MULT+5];
+						reg_reset_rx_in<=~dataIn[BAUD_BITS+OVERSAMPLING_MULT+6];
+
+						//only if tx and both rx are enabled
+						if(test_available)
+							config_test_mode<=dataIn[BAUD_BITS+OVERSAMPLING_MULT+4]; //1
+					end
+					else
+					begin
+						dataOut<={{27{1'd0}},config_test_mode,reg_reset_rx,reg_reset_tx,reg_enable_rx,reg_enable_tx};
 					end
 				end
 
@@ -210,7 +261,7 @@ module uart_core
 	)
 	uart_tx_0
 	(
-		.nRst      (nRst)
+		.nRst      (nRst|(reg_reset_tx))
 		,.baudClk   (baud_clk_tx)
 		,.startTx   (reg_start_tx)
 		,.dataTx    (reg_write)
@@ -229,7 +280,7 @@ module uart_core
 	)
 	uart_rx_0
 	(
-		.nRst             (nRst)
+		.nRst             (nRst|(reg_reset_rx))
 		,.parity          (config_parity)
 		,.stopBits        (config_stop_bits)
 		,.baudClk         (baud_clk_rx)
