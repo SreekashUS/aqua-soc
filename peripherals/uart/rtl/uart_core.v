@@ -184,9 +184,10 @@ module uart_core
 				begin
 					if(wr)
 					begin
-						if(~uart_tx_busy&(reg_enable_tx^dataIn[BAUD_BITS+OVERSAMPLING_MULT+2]))
+						if(~uart_tx_busy&(reg_enable_tx^dataIn[0]))
 							reg_enable_tx<=~reg_enable_tx;
-						if(~reg_uart_rx_busy&(reg_enable_rx^dataIn[BAUD_BITS+OVERSAMPLING_MULT+3]))
+
+						if(~reg_uart_rx_busy&(reg_enable_rx^dataIn[1]))
 							reg_enable_rx<=~reg_enable_rx;
 
 						reg_reset_tx_in<=~dataIn[BAUD_BITS+OVERSAMPLING_MULT+5];
@@ -261,7 +262,7 @@ module uart_core
 	)
 	uart_tx_0
 	(
-		.nRst      (nRst|(reg_reset_tx))
+		.nRst      (nRst&(~reg_reset_tx))
 		,.baudClk   (baud_clk_tx)
 		,.startTx   (reg_start_tx)
 		,.dataTx    (reg_write)
@@ -280,7 +281,7 @@ module uart_core
 	)
 	uart_rx_0
 	(
-		.nRst             (nRst|(reg_reset_rx))
+		.nRst             (nRst&(~reg_reset_rx))
 		,.parity          (config_parity)
 		,.stopBits        (config_stop_bits)
 		,.baudClk         (baud_clk_rx)
