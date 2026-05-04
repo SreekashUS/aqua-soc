@@ -2,6 +2,7 @@
 #define UART_SEQUENCE_HPP
 
 #include "mmio/include/mmio_driver.hpp"
+#include "commons/include/sim_clock.hpp"
 
 class UartSequence
 {
@@ -15,9 +16,11 @@ public:
 	void setDriver(MmioDriver* drv);
 	void setSimClock(SimClock* simClk);
 
+	void setControl(uint8_t control);
+
 	void setConfig(uint32_t uartConfig);
 
-	void sendByte(uint8_t data);
+	void sendByte(uint8_t data,uint8_t control,uint32_t config);
 
 	uint32_t recvByte();
 

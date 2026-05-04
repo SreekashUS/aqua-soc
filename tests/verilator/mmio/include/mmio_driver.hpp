@@ -1,19 +1,22 @@
 #ifndef MMIO_DRIVER_HPP
 #define MMIO_DRIVER_HPP
 
-template<typename DUT>
+#include <cstdint>
+#include "Vmmio_dev.h"
+
 class MmioDriver 
 {
 public:
-	DUT* m_top;
+	Vmmio_dev* m_top;
 
 	MmioDriver();
     ~MmioDriver();
 
-	void setDut(DUT* dut);
+	void setDut(Vmmio_dev* dut);
     
-    void write(uint32_t addr, uint32_t data);
-    uint32_t read(uint32_t addr);
+    void reset(bool value);
+    void writeReg(uint32_t addr, uint32_t data);
+    uint32_t readReg(uint32_t addr);
     void eval();
 };
 

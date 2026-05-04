@@ -1,20 +1,22 @@
-TOP:= uart_core
+TOP:= mmio_dev
 DESIGN_FILES:= \
-	"peripherals/uart/rtl/uart_core.v" \
-	"peripherals/uart/rtl/uart_tx.v" \
-	"peripherals/uart/rtl/baud_generator_int.v" \
-	"peripherals/uart/rtl/uart_rx.v" \
-	"peripherals/uart/rtl/uart_rx_oversampler.v"
+	peripherals/uart/rtl/uart_core.v \
+	peripherals/uart/rtl/uart_tx.v \
+	peripherals/uart/rtl/baud_generator_int.v \
+	peripherals/uart/rtl/uart_rx.v \
+	peripherals/uart/rtl/uart_rx_oversampler.v \
+	tests/verilator/uart/mmio_dev.v
 
-DIR_PATH:= "peripherals/uart"
+DIR_PATH:= peripherals/uart
 
 # mention source files and include directly
 SRC_FILES:= \
-	"peripherals/uart/verilator_sim/src/uart_core_tx_tests.cpp" \
-	"peripherals/uart/verilator_sim/src/uart_core_rand.cpp" \
-	"peripherals/uart/verilator_sim/src/uart_core_tx_tests_main.cpp"
+	commons/src/sim_clock.cpp \
+	mmio/src/mmio_driver.cpp \
+	uart/src/uart_sequence.cpp \
+	uart/src/uart_tb.cpp
 SRC_INCLUDES:= \
-	"-Iperipherals/verilator_sim/include"
+	"-Itests/verilator/"
 
 # Verilator defines, passed as Makefile variable, e.g.,
 # make verilate VERILATOR_DEFINES="UART_BAUD=115200 ENABLE_LOG"

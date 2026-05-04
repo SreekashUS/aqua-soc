@@ -10,7 +10,12 @@ MmioDriver::~MmioDriver()
 	
 }
 
-void MmioDriver::setDut(DUT* dut)
+void MmioDriver::reset(bool value)
+{
+	this->m_top->nRst=value? 0:1;
+}
+
+void MmioDriver::setDut(Vmmio_dev* dut)
 {
 	this->m_top=dut;
 }
