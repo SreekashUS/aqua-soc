@@ -1,13 +1,13 @@
 TOP:= mmio_dev
 DESIGN_FILES:= \
-	peripherals/uart/rtl/uart_core.v \
-	peripherals/uart/rtl/uart_tx.v \
-	peripherals/uart/rtl/baud_generator_int.v \
-	peripherals/uart/rtl/uart_rx.v \
-	peripherals/uart/rtl/uart_rx_oversampler.v \
+	../$(TAG)/peripherals/uart/rtl/uart_core.v \
+	../$(TAG)/peripherals/uart/rtl/uart_tx.v \
+	../$(TAG)/peripherals/uart/rtl/baud_generator_int.v \
+	../$(TAG)/peripherals/uart/rtl/uart_rx.v \
+	../$(TAG)/peripherals/uart/rtl/uart_rx_oversampler.v \
 	tests/verilator/uart/mmio_dev.v
 
-DIR_PATH:= peripherals/uart
+DIR_PATH:= ../$(TAG)/peripherals/uart
 
 # mention source files and include directly
 SRC_FILES:= \

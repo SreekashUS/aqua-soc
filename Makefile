@@ -14,6 +14,7 @@ $(info SRC_FILES_PREFIX='$(SRC_FILES_PREFIX)')
 
 # generate verilator sources
 verilate:
+	mkdir -p tests/verilator/obj_dir/$(TOP)
 	@echo "Compiling $(SRC_FILES_PREFIX)"
 	verilator \
 	-Wall $(VERILATOR_WARNING_IGNORE) \
@@ -45,4 +46,4 @@ build-run:
 
 # cleanup
 clean:
-	rm -rf tests/verilator/obj_dir/$(DESIGN)/
+	rm -rf tests/verilator/obj_dir/$(DESIGN)/*
