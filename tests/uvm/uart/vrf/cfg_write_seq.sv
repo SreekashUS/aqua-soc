@@ -10,6 +10,8 @@ class uart_cfg_write_seq extends uart_base_seq;
 	task body();
 		super.body();
 
+      	//enable tx datapath
+      	writeReg(UART_REG_CONTROL,32'h0028_0000);
 		//write config
 		writeReg(UART_REG_CONFIG,32'h0000_0002);
 		//write byte

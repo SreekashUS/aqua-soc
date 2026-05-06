@@ -31,12 +31,14 @@ class uart_test extends uvm_test;
 
 
     task run_phase(uvm_phase phase);
-
+      
         uart_cfg_write_seq seq;
 
         phase.raise_objection(this);
 
         seq = uart_cfg_write_seq::type_id::create("seq");
+      
+        #3;
 
         seq.start(seqr);   // FULL UVM FLOW restored
 

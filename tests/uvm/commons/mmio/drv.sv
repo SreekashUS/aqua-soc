@@ -33,13 +33,13 @@ class mmio_drv extends uvm_driver #(mmio_txn);
 		begin
 			seq_item_port.get_next_item(req);
 
-			@(negedge vif.clk);
+//           	@(posedge vif.clk);
 
 			vif.addr<=req.addr;
 			vif.wdata<=req.data;
 			vif.wr<=req.is_wr;
 
-			@(posedge vif.clk);
+          	@(posedge vif.clk);
 
 			if (!req.is_wr)
 				req.data = vif.rdata;
