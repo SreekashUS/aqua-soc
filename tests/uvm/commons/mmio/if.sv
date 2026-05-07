@@ -11,5 +11,7 @@ interface mmio_if
   logic [DW-1:0] wdata;
   logic [DW-1:0] rdata;
   logic wr;
+  
+  logic nRst;
 
-endinterface : mmio_if
+endinterface :mmio_if

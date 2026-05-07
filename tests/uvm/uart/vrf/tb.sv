@@ -1,12 +1,15 @@
-module tb ;
+module tb;
 
     import uvm_pkg::*;
+    import tb_pkg::*;
+  
     `include "uvm_macros.svh"
 
     logic clk;
     logic nRst;
 
-    mmio_if vif(clk);
+    //mmio_if encapsulated inside
+    uart_if vif(clk);
 
     logic intr;
     logic uartTxLine;
@@ -15,16 +18,16 @@ module tb ;
     uart_core dut
     (
         .clk(clk)
-        ,.nRst(nRst)
+        ,.nRst(vif.m_mmio_if.nRst)
 
-        ,.addrIn (vif.addr)
-        ,.dataIn (vif.wdata)
-        ,.dataOut(vif.rdata)
-        ,.wr     (vif.wr)
+        ,.addrIn (vif.m_mmio_if.addr)
+        ,.dataIn (vif.m_mmio_if.wdata)
+        ,.dataOut(vif.m_mmio_if.rdata)
+        ,.wr     (vif.m_mmio_if.wr)
 
-        ,.intr(intr)
-        ,.uartTxLine(uartTxLine)
-        ,.uartRxLine(uartRxLine)
+        ,.intr(vif.irq)
+        ,.uartTxLine(vif.tx)
+        ,.uartRxLine(vif.rx)
     );
 
     // clock
@@ -34,21 +37,24 @@ module tb ;
         forever #5 clk = ~clk;
     end
 
-    // reset
+    // reset and UVM
     initial 
-    begin
-        nRst = 0;
-        #20;
-        nRst = 1;
+    begin      
+        vif.m_mmio_if.nRst = 0;
+        #10;
+        vif.m_mmio_if.nRst = 1;
     end
-
-    // UVM bootstrap
-    initial 
+  
+    initial
     begin
-        uvm_config_db#(virtual mmio_if)::set(null, "*", "vif", vif);
-        run_test("uart_test");
+        //set db config components
+        uvm_config_db#(virtual mmio_if)::set(null, "uvm_test_top.m_env.m_mmio_agent*", "mmio_if", vif.m_mmio_if);
+        
+        //to be used by rx driver and irq monitor
+        uvm_config_db#(virtual uart_if)::set(null, "*", "uart_if", vif);
+      
+        run_test("uart_write_read_irq_test");    
     end
-
   
     initial
       begin

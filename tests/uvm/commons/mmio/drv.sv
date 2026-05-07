@@ -16,7 +16,7 @@ class mmio_drv extends uvm_driver #(mmio_txn);
 	function void build_phase(uvm_phase phase);
 		super.build_phase(phase);
 
-		if(!uvm_config_db #(virtual mmio_if)::get(this, "", "vif",vif))
+		if(!uvm_config_db #(virtual mmio_if)::get(this, "", "mmio_if",vif))
 			`uvm_fatal("NOVIF","mmio_if not set")
 	endfunction : build_phase
 
@@ -32,9 +32,9 @@ class mmio_drv extends uvm_driver #(mmio_txn);
 		forever
 		begin
 			seq_item_port.get_next_item(req);
-
-//           	@(posedge vif.clk);
-
+			
+          	wait(vif.nRst==1);
+          
 			vif.addr<=req.addr;
 			vif.wdata<=req.data;
 			vif.wr<=req.is_wr;

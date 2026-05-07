@@ -1,1 +1,3 @@
-qrun -batch -access=rw+/. -uvmhome uvm-1.2 design.sv if.sv uart_tx.sv uart_rx_oversampler.sv uart_rx.sv baud_generator_int.sv design.sv reg_map.svh txn.sv drv.sv testbench.sv base_seq.sv cfg_write_seq.sv sqr.sv test.sv -timescale 1ns/1ns -mfcu -do "run -all; exit"
+qrun -batch -access=rw+/. -uvmhome uvm-1.2 reg_map.svh tb_pkg.sv design.sv uart_tx.sv uart_rx_oversampler.sv uart_rx.sv baud_generator_int.sv if.sv uart_if.sv testbench.sv -timescale 1ns/1ns -do "run -all; exit"
+
+#vlog -E flow_seq.sv
