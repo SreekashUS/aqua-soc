@@ -49,6 +49,7 @@ module uart_core
 	reg [(ERR_BITS+1)-1:0] reg_int_mask;
 	reg [(ERR_BITS+1)-1:0] reg_int_signals;
 	reg [(ERR_BITS+1)-1:0] reg_int_pend;
+	reg irq_pending;
 
 	// reg [UART_DATA_BITS-1:0] reg_out_gpr;
 	wire [DATA_BITS-1:0] uart_rx_data;
@@ -81,6 +82,9 @@ module uart_core
 
 	// address misaligned, tx busy, rx ready, err status
 	wire uart_tx_busy;
+
+	wire uart_rx_ready;
+	wire [ERR_BITS-1:0] uart_rx_err;
 
 	wire reg_uart_tx_busy;
 	wire reg_uart_rx_busy;
@@ -121,6 +125,7 @@ module uart_core
 			reg_int_mask<=0;
 			reg_int_signals<=0;
 			reg_int_pend<=0;
+			irq_pending<=0;
 		end
 		else
 		begin
@@ -133,7 +138,13 @@ module uart_core
 
 			reg_read<=uart_rx_data;
 			reg_int_signals<={uart_rx_err,uart_rx_ready};
-			reg_int_pend<=reg_int_mask&reg_int_signals;
+			
+			if(~irq_pending)
+			begin
+				reg_int_pend<=reg_int_mask&reg_int_signals;
+				if(reg_int_pend!=0)
+					irq_pending<=1;
+			end
 
 			//not address dependent control reset
 			if(uart_tx_busy)
@@ -154,7 +165,7 @@ module uart_core
 
 				UART_REG_READ:
 				begin
-					if(reg_enable_rx&uart_rx_ready)
+					if(reg_enable_rx&reg_int_pend[0])
 					begin
 						if(~wr)
 							dataOut<={24'd0,reg_read};
@@ -184,18 +195,23 @@ module uart_core
 				begin
 					if(wr)
 					begin
-						if(~uart_tx_busy&(reg_enable_tx^dataIn[0]))
-							reg_enable_tx<=~reg_enable_tx;
+						reg_reset_tx_in<=~dataIn[3];
+						reg_reset_rx_in<=~dataIn[4];
 
-						if(~reg_uart_rx_busy&(reg_enable_rx^dataIn[1]))
-							reg_enable_rx<=~reg_enable_rx;
+						if(dataIn[0])
+							reg_enable_tx<=1;
+						else if(~uart_tx_busy)
+							reg_enable_tx<=0;
 
-						reg_reset_tx_in<=~dataIn[BAUD_BITS+OVERSAMPLING_MULT+5];
-						reg_reset_rx_in<=~dataIn[BAUD_BITS+OVERSAMPLING_MULT+6];
+						if(dataIn[1])
+							reg_enable_rx<=1;
+						else if(~reg_uart_rx_busy)
+							reg_enable_rx<=0;
 
-						//only if tx and both rx are enabled
-						if(test_available)
-							config_test_mode<=dataIn[BAUD_BITS+OVERSAMPLING_MULT+4]; //1
+						if(dataIn[0]&dataIn[1]&dataIn[2])
+							config_test_mode<=1;
+						else
+							config_test_mode<=0;
 					end
 					else
 					begin
@@ -212,7 +228,7 @@ module uart_core
 				UART_REG_INT_STATUS:
 				begin
 					if(~wr)
-						dataOut<={{(32-(ERR_BITS+1)){1'b0}},{uart_rx_err,uart_rx_ready}};
+						dataOut<={{(32-(ERR_BITS+1)){1'b0}},reg_int_pend};
 				end
 
 				UART_REG_INT_MASK:
@@ -226,7 +242,11 @@ module uart_core
 				UART_REG_INT_CLR:
 				begin
 					if(wr)
+					begin
 						reg_int_signals<=reg_int_signals&(~dataIn[(ERR_BITS+1)-1:0]);
+						if(reg_int_signals==0)
+							irq_pending<=0;
+					end
 				end
 
 				default:
@@ -272,8 +292,6 @@ module uart_core
 		,.parity    (config_parity)
 	);
 
-	wire uart_rx_ready;
-	wire [ERR_BITS-1:0] uart_rx_err;
 	uart_rx
 	#(
 		.DATA_BITS        (DATA_BITS)
