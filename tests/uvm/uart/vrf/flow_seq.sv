@@ -37,6 +37,7 @@ class uart_flow_seq extends uart_base_seq;
                     rd=uart_read_seq::type_id::create("rd");
                     rd.addr=UART_REG_READ;
                     rd.start(m_sequencer);
+                    rx_data=rd.data;
                     `uvm_info("FLOW",$sformatf("IRQ RX=%0d", rx_data),UVM_MEDIUM)
 
                     //Clear rx_ready interrupt
@@ -69,7 +70,7 @@ class uart_flow_seq extends uart_base_seq;
         //enable tx, rx and loopback
         wr=uart_write_seq::type_id::create("wr");
         wr.addr=UART_REG_CONTROL;
-        wr.data=32'h0038_0000;
+        wr.data=32'h0000_0007;
         wr.start(m_sequencer);
 
         //enable tx interrupt

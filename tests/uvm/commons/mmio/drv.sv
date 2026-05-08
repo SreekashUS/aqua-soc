@@ -42,7 +42,10 @@ class mmio_drv extends uvm_driver #(mmio_txn);
           	@(posedge vif.clk);
 
 			if (!req.is_wr)
+			begin
+				@(posedge vif.clk);
 				req.data = vif.rdata;
+			end
 
 			vif.addr<=0;
 			vif.wdata<=0;

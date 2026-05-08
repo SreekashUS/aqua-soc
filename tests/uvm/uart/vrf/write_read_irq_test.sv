@@ -19,7 +19,7 @@ class uart_write_read_irq_test extends uart_base_test;
         flow_seq=uart_flow_seq::type_id::create("flow_seq");
 
         //parameters for test
-        flow_seq.num_ops=4;
+        flow_seq.num_ops=256;
 
         //connect subscriber
         flow_seq.m_irq_event=m_env.m_irq_event;

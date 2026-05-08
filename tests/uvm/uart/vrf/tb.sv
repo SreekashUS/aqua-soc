@@ -41,7 +41,7 @@ module tb;
     initial 
     begin      
         vif.m_mmio_if.nRst = 0;
-        #10;
+        #5;
         vif.m_mmio_if.nRst = 1;
     end
   
