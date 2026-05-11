@@ -16,6 +16,8 @@ public:
     
     void reset(bool value);
     void writeReg(uint32_t addr, uint32_t data);
+    void invalidate();
+    bool ready();
     uint32_t readReg(uint32_t addr);
     void eval();
 };

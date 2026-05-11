@@ -1,5 +1,6 @@
 // cpp standard libs
 #include <iostream>
+#include <vector>
 
 // vcd dump
 #include "verilated_vcd_c.h"
@@ -46,10 +47,18 @@ int main(int argc, char const *argv[])
     uart_seq.setSimClock(sim_clk);
 
     //sequence
-    // uart_seq.sendByte(0xAA,0x07,0x00000002);
+    // uart_seq.sendByte(0xAA);
 
     //test loopback mode via polling interrupt
-    uart_seq.testLoopbackByte(0xFF,0x00000002);
+    // uart_seq.setConfig(0x00000002);
+    // uart_seq.testLoopbackByteInterrupt(0xFF);
+
+    //test loopback mode with ready handshake and interrupt reading
+
+    std::vector<uint8_t> values={0xAA,0x55,0x26,0x84,0x53};
+
+    uart_seq.setConfig(0x00000002);
+    uart_seq.testLoopbackCont(values);
 
     uint32_t cycles=10000;
     while(cycles>0)

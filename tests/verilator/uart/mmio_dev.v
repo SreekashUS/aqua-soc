@@ -21,7 +21,7 @@ module mmio_dev
 	,output wire uartTxLine
 	,input wire uartRxLine
 	,input wire valid
-	,output wire busy
+	,output wire ready
 );
 	uart_core
 	uart_core_0
@@ -35,7 +35,7 @@ module mmio_dev
 		,.intr      (intr)
 		,.uartTxLine(uartTxLine)
 		,.uartRxLine(uartRxLine)
-		,.busy      (busy)
+		,.ready     (ready)
 		,.valid     (valid)
 	);
 

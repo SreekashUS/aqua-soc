@@ -1,6 +1,8 @@
 #ifndef UART_SEQUENCE_HPP
 #define UART_SEQUENCE_HPP
 
+#include <vector>
+
 #include "mmio/include/mmio_driver.hpp"
 #include "commons/include/sim_clock.hpp"
 
@@ -22,11 +24,13 @@ public:
 
 	void setInterruptMask(uint8_t mask);
 
-	void sendByte(uint8_t data,uint8_t control,uint32_t config);
+	void sendByte(uint8_t data);
 
 	uint32_t recvByte();
 
-	void testLoopbackByte(uint8_t byte,uint32_t config);
+	void testLoopbackByteInterrupt(uint8_t byte);
+
+	void testLoopbackCont(std::vector<uint8_t> bytes);
 
 	void sendBytesV(std::vector<uint8_t> &data);
 
