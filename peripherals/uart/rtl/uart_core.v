@@ -100,8 +100,30 @@ module uart_core
 
 	assign intr=|(reg_int_pend);
 
-	assign ready=((addrIn==UART_REG_WRITE) && ~reg_uart_tx_busy) \ 
-	|| ((addrIn==UART_REG_CONFIG) && ~(reg_uart_tx_busy|reg_uart_rx_busy);
+	always @(*)
+	begin
+		case(addrIn)
+			UART_REG_WRITE:
+			begin
+				ready=~reg_uart_tx_busy;
+			end
+
+			UART_REG_CONFIG:
+			begin
+				ready=~(reg_uart_tx_busy|reg_uart_rx_busy);
+			end
+
+			UART_REG_CONTROL:
+			begin
+				ready=~(reg_uart_tx_busy|reg_uart_rx_busy);				
+			end
+
+			default:
+			begin
+				ready=1;
+			end
+		endcase
+	end
 
 	always @(posedge clk,negedge nRst)
 	begin
@@ -158,7 +180,8 @@ module uart_core
 				case(addrIn)
 					UART_REG_WRITE:
 					begin
-						if(reg_enable_tx&~irq_pending)
+						//should not write if fifo is full (or in this case tx busy)
+						if(reg_enable_tx)
 						begin
 							if(wr)
 							begin
@@ -166,6 +189,7 @@ module uart_core
 								begin
 									reg_write[DATA_BITS-1:0]<=dataIn[DATA_BITS-1:0];
 									reg_start_tx<=1;
+								end
 							end
 						end
 					end
