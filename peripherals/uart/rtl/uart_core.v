@@ -55,7 +55,7 @@ module uart_core
 	reg [(ERR_BITS+1)-1:0] reg_int_pend;
 	reg irq_pending;
 
-	wire [DATA_BITS-1:0] uart_rx_data;
+	// wire [DATA_BITS-1:0] uart_rx_data;
 	
 	// additional control/configuration
 	reg reg_start_tx;
@@ -141,7 +141,7 @@ module uart_core
 			reg_reset_tx<=(~reg_reset_tx_1clk)&reg_reset_tx_in;
 			reg_reset_rx<=(~reg_reset_rx_1clk)&reg_reset_rx_in;
 
-			reg_read<=uart_rx_data;
+			// reg_read<=uart_rx_data;
 			reg_int_signals<={uart_rx_err,uart_rx_ready};
 			
 			if(~irq_pending)

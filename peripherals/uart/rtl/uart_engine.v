@@ -30,9 +30,9 @@ module uart_engine
 	//rx wires and soft reset rx
 	,input wire nRstRxSft
 	,input wire uartRxLine 
-	,output wire rxReadData
+	,output wire [DATA_BITS-1:0] rxReadData
 	,output wire rxReady
-	,output wire rxErr
+	,output wire [ERR_BITS-1:0] rxErr
 	,output wire rxBusy
 
 	//datapath and enable control
