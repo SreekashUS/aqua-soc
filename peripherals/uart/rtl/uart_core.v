@@ -21,7 +21,7 @@ module uart_core
 	,output reg [UART_DATA_BITS-1:0] dataOut //uart data out
 	,input wire wr //write-read signal
 	,input wire valid //valid signal for mmio transaction
-	,output wire busy //backpressure/stall control from uart core
+	,output wire ready //backpressure/stall control from uart core
 
 	,output wire intr //uart interrupt
 
@@ -89,7 +89,6 @@ module uart_core
 
 	wire reg_uart_tx_busy;
 	wire reg_uart_rx_busy;
-	reg backpressure;
 
 `ifdef VERILATOR_TEST
 	/* verilator lint_off UNUSED */
@@ -101,7 +100,8 @@ module uart_core
 
 	assign intr=|(reg_int_pend);
 
-	assign busy=backpressure;
+	assign ready=((addrIn==UART_REG_WRITE) && ~reg_uart_tx_busy) \ 
+	|| ((addrIn==UART_REG_CONFIG) && ~(reg_uart_tx_busy|reg_uart_rx_busy);
 
 	always @(posedge clk,negedge nRst)
 	begin
@@ -129,8 +129,6 @@ module uart_core
 			reg_int_signals<=0;
 			reg_int_pend<=0;
 			irq_pending<=0;
-
-			backpressure<=0;
 		end
 		else
 		begin
@@ -168,8 +166,6 @@ module uart_core
 								begin
 									reg_write[DATA_BITS-1:0]<=dataIn[DATA_BITS-1:0];
 									reg_start_tx<=1;
-								end
-									backpressure<=1;
 							end
 						end
 					end
@@ -194,8 +190,6 @@ module uart_core
 								config_parity<=dataIn[BAUD_BITS+OVERSAMPLING_MULT]; //1
 								config_stop_bits<=dataIn[BAUD_BITS+OVERSAMPLING_MULT+1]; //1
 							end
-							else
-								backpressure<=1;
 						end
 						// issue from verilator
 						// else
