@@ -20,9 +20,13 @@ public:
 
 	void setConfig(uint32_t uartConfig);
 
+	void setInterruptMask(uint8_t mask);
+
 	void sendByte(uint8_t data,uint8_t control,uint32_t config);
 
 	uint32_t recvByte();
+
+	void testLoopbackByte(uint8_t byte,uint32_t config);
 
 	void sendBytesV(std::vector<uint8_t> &data);
 

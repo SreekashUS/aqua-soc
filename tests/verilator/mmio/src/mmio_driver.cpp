@@ -25,12 +25,14 @@ void MmioDriver::writeReg(uint32_t addr,uint32_t data)
 	m_top->addrIn=addr;
 	m_top->dataIn=data;
 	m_top->wr=1;
+	m_top->valid=1;
 }
 
 uint32_t MmioDriver::readReg(uint32_t addr)
 {
 	m_top->addrIn=addr;
 	m_top->wr=0;
+	// m_top->valid=
 	return m_top->dataOut;
 }
 

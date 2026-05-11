@@ -32,6 +32,8 @@ int main(int argc, char const *argv[])
     sim_clk->setDrv(dut_driver);
 
     //reset for one cycle
+    dut->nRst=1;
+    sim_clk->step();
     dut->nRst=0;
     sim_clk->step();
     dut->nRst=1;
@@ -44,7 +46,10 @@ int main(int argc, char const *argv[])
     uart_seq.setSimClock(sim_clk);
 
     //sequence
-    uart_seq.sendByte(0xAA,0x01,0x00000002);
+    // uart_seq.sendByte(0xAA,0x07,0x00000002);
+
+    //test loopback mode via polling interrupt
+    uart_seq.testLoopbackByte(0xFF,0x00000002);
 
     uint32_t cycles=10000;
     while(cycles>0)

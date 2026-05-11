@@ -35,6 +35,12 @@ void UartSequence::setConfig(uint32_t uartConfig)
 	m_sim_clk->step();
 }
 
+void UartSequence::setInterruptMask(uint8_t mask)
+{
+	m_drv->writeReg(UART_REG_INT_MASK,mask);
+	m_sim_clk->step();
+}
+
 void UartSequence::sendByte(uint8_t data,uint8_t control,uint32_t config)
 {
 	//set control and config
@@ -71,6 +77,38 @@ uint32_t UartSequence::recvByte()
 	{
 		std::cout<<"RX ready interrupt maskedn\n";
 		return 0;
+	}
+}
+
+void UartSequence::testLoopbackByte(uint8_t byte,uint32_t config)
+{
+	//set control and config
+	setControl(0x07);
+	setConfig(config);
+	setInterruptMask(0x01);
+
+	m_drv->writeReg(UART_REG_WRITE,byte);
+
+	//run until interrupt
+	while(m_drv->m_top->intr==0)
+	{
+		m_sim_clk->step();
+	}
+
+	uint32_t read_data;
+	
+	m_drv->readReg(UART_REG_INT_STATUS);
+	m_sim_clk->step();
+	uint32_t intr_status=m_drv->readReg(UART_REG_INT_STATUS);
+	
+	if((intr_status&1)==1)
+	{
+		m_drv->readReg(UART_REG_READ);
+		read_data=m_drv->readReg(UART_REG_READ);
+		m_sim_clk->step();
+
+		//clear interrupt
+		m_drv->writeReg(UART_REG_INT_CLR,0x01);
 	}
 }
 

@@ -1,10 +1,19 @@
 TOP:= mmio_dev
 DESIGN_FILES:= \
+<<<<<<< Updated upstream
 	../$(TAG)/peripherals/uart/rtl/uart_core.v \
 	../$(TAG)/peripherals/uart/rtl/uart_tx.v \
 	../$(TAG)/peripherals/uart/rtl/baud_generator_int.v \
 	../$(TAG)/peripherals/uart/rtl/uart_rx.v \
 	../$(TAG)/peripherals/uart/rtl/uart_rx_oversampler.v \
+=======
+	peripherals/uart/rtl/uart_core.v \
+	peripherals/uart/rtl/uart_tx.v \
+	peripherals/uart/rtl/baud_generator_int.v \
+	peripherals/uart/rtl/uart_rx.v \
+	peripherals/uart/rtl/uart_rx_oversampler.v \
+	peripherals/uart/rtl/uart_engine.v \
+>>>>>>> Stashed changes
 	tests/verilator/uart/mmio_dev.v
 
 DIR_PATH:= ../$(TAG)/peripherals/uart
