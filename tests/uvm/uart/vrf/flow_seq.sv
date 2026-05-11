@@ -10,20 +10,12 @@ class uart_flow_seq extends uart_base_seq;
     function new(string name="uart_flow_seq");
         super.new(name);
     endfunction
-  
-    task body();
-        uart_write_seq wr;
+
+    task handle_irq();
         uart_read_seq rd;
+        uart_write_seq wr;
 
-        bit [31:0] status;
-        bit [31:0] int_status;
-        bit [31:0] rx_data;
-
-        //setup the UART, control, config, reset, set interrupt mask etc
-        setup();
-
-        //Do repeated transactions
-        repeat (num_ops)
+        forever
         begin
             //interrupt handling
             if(m_irq_event!=null && m_irq_event.is_on())
@@ -45,16 +37,43 @@ class uart_flow_seq extends uart_base_seq;
                     wr.addr=UART_REG_INT_CLR;
                     wr.data=32'h0000_0001;
                     wr.start(m_sequencer);
-
-                    m_irq_event.reset();
                 end
-            end
 
+                m_irq_event.reset();
+            end
+        end
+    endtask :handle_irq
+
+    task write_data();
+        uart_write_seq wr;
+        forever
+        begin
             //write flow sequence 
             wr=uart_write_seq::type_id::create("wr");
             wr.addr=UART_REG_WRITE;
             wr.data=$urandom_range(0,255);
             wr.start(m_sequencer);
+        end
+    endtask :write_data
+
+    task body();
+        uart_write_seq wr;
+        uart_read_seq rd;
+
+        bit [31:0] status;
+        bit [31:0] int_status;
+        bit [31:0] rx_data;
+
+        //setup the UART, control, config, reset, set interrupt mask etc
+        setup();
+
+        //Do repeated transactions
+        repeat (num_ops)
+        begin
+            
+            handle_irq();
+
+            write_data();
         end
     endtask
 

@@ -38,7 +38,7 @@ class mmio_drv extends uvm_driver #(mmio_txn);
 			vif.wdata<=req.data;
 			vif.wr<=req.is_wr;
 
-	        @(posedge vif.clk iff vif.ready iff vif.valid);
+	        @(posedge vif.clk iff vif.ready);
 
 			// if (!req.is_wr)
 			// 	req.data=vif.rdata;
