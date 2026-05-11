@@ -28,6 +28,9 @@ module tb;
         ,.intr(vif.irq)
         ,.uartTxLine(vif.tx)
         ,.uartRxLine(vif.rx)
+
+        ,.valid(vif.m_mmio_if.valid)
+        ,.busy(~vif.m_mmio_if.ready)
     );
 
     // clock

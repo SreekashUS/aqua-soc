@@ -6,7 +6,7 @@ class uart_write_read_irq_test extends uart_base_test;
         super.new(name, parent);
     endfunction
 
-    //build, connect are from base test
+    //build, connect, reset phase are from base test
 
     task run_phase(uvm_phase phase);
         uart_flow_seq flow_seq;

@@ -33,24 +33,22 @@ class mmio_drv extends uvm_driver #(mmio_txn);
 		begin
 			seq_item_port.get_next_item(req);
 			
-          	wait(vif.nRst==1);
-          
+			vif.valid<=1;
 			vif.addr<=req.addr;
 			vif.wdata<=req.data;
 			vif.wr<=req.is_wr;
 
-          	@(posedge vif.clk);
+	        @(posedge vif.clk iff vif.ready iff vif.valid);
 
-			if (!req.is_wr)
-			begin
-				@(posedge vif.clk);
-				req.data = vif.rdata;
-			end
+			// if (!req.is_wr)
+			// 	req.data=vif.rdata;
+			
+			vif.valid<=0;
 
 			vif.addr<=0;
 			vif.wdata<=0;
 			vif.wr<=0;
-
+			
 			seq_item_port.item_done();
 		end
 	endtask : run_phase
