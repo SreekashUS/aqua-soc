@@ -21,7 +21,7 @@ module uart_core
 	,output reg [UART_DATA_BITS-1:0] dataOut //uart data out
 	,input wire wr //write-read signal
 	,input wire valid //valid signal for mmio transaction
-	,output wire ready //backpressure/stall control from uart core
+	,output reg ready //backpressure/stall control from uart core
 
 	,output wire intr //uart interrupt
 
@@ -50,9 +50,9 @@ module uart_core
 	reg [DATA_BITS-1:0] reg_read;
 
 	//interrupt control
-	reg [(ERR_BITS+1)-1:0] reg_int_mask;
-	reg [(ERR_BITS+1)-1:0] reg_int_signals;
-	reg [(ERR_BITS+1)-1:0] reg_int_pend;
+	reg [7:0] reg_int_mask;
+	reg [7:0] reg_int_signals;
+	reg [7:0] reg_int_pend;
 	reg irq_pending;
 
 	// wire [DATA_BITS-1:0] uart_rx_data;
@@ -100,31 +100,6 @@ module uart_core
 
 	assign intr=|(reg_int_pend);
 
-	always @(*)
-	begin
-		case(addrIn)
-			UART_REG_WRITE:
-			begin
-				ready=~reg_uart_tx_busy;
-			end
-
-			UART_REG_CONFIG:
-			begin
-				ready=~(reg_uart_tx_busy|reg_uart_rx_busy);
-			end
-
-			UART_REG_CONTROL:
-			begin
-				ready=~(reg_uart_tx_busy|reg_uart_rx_busy);				
-			end
-
-			default:
-			begin
-				ready=1;
-			end
-		endcase
-	end
-
 	always @(posedge clk,negedge nRst)
 	begin
 		if(~nRst)
@@ -151,6 +126,11 @@ module uart_core
 			reg_int_signals<=0;
 			reg_int_pend<=0;
 			irq_pending<=0;
+
+			reg_tx_busy_intr<=0;
+
+			//default always ready
+			ready<=1;
 		end
 		else
 		begin
@@ -162,8 +142,8 @@ module uart_core
 			reg_reset_rx<=(~reg_reset_rx_1clk)&reg_reset_rx_in;
 
 			// reg_read<=uart_rx_data;
-			reg_int_signals<={uart_rx_err,uart_rx_ready};
-			
+			reg_int_signals<={reg_tx_busy_intr,uart_rx_err,uart_rx_ready};
+
 			if(~irq_pending)
 			begin
 				reg_int_pend<=reg_int_mask&reg_int_signals;
@@ -189,6 +169,10 @@ module uart_core
 								begin
 									reg_write[DATA_BITS-1:0]<=dataIn[DATA_BITS-1:0];
 									reg_start_tx<=1;
+								end
+								else
+								begin
+									reg_tx_busy_intr<=1;
 								end
 							end
 						end
@@ -280,7 +264,7 @@ module uart_core
 					begin
 						if(wr)
 						begin
-							reg_int_signals<=reg_int_signals&(~dataIn[(ERR_BITS+1)-1:0]);
+							reg_int_signals<=reg_int_signals&(~dataIn[7:0]);
 							if(reg_int_signals==0)
 								irq_pending<=0;
 						end
