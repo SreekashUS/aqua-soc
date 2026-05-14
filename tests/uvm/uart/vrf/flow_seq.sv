@@ -4,6 +4,8 @@ class uart_flow_seq extends uart_base_seq;
     `uvm_object_utils(uart_flow_seq)
 
     int num_ops=16;
+    int next_write_delay=1000;
+    int current_write_cycle=0;
     // int reset_prob=10;
     // int cfg_prob=5;
 
@@ -15,29 +17,40 @@ class uart_flow_seq extends uart_base_seq;
         uart_read_seq rd;
         uart_write_seq wr;
 
-        forever
+        bit [31:0] status;
+        bit [31:0] int_status;
+        bit [31:0] rx_data;
+
         begin
             //interrupt handling
             if(m_irq_event!=null && m_irq_event.is_on())
             begin
-                rd=uart_read_seq::type_id::create("rd");
+                rd=uart_read_seq::type_id::create("irq_stat_rd");
                 rd.addr=UART_REG_INT_STATUS;
                 rd.start(m_sequencer);
 
+                //rx ready interrupt
                 if(rd.data[0])
                 begin
-                    rd=uart_read_seq::type_id::create("rd");
+                    rd=uart_read_seq::type_id::create("uart_rx_rd");
                     rd.addr=UART_REG_READ;
                     rd.start(m_sequencer);
                     rx_data=rd.data;
-                    `uvm_info("FLOW",$sformatf("IRQ RX=%0d", rx_data),UVM_MEDIUM)
-
-                    //Clear rx_ready interrupt
-                    wr=uart_write_seq::type_id::create("wr");
-                    wr.addr=UART_REG_INT_CLR;
-                    wr.data=32'h0000_0001;
-                    wr.start(m_sequencer);
+                    `uvm_info("RX received",$sformatf("IRQ RX=%0d", rx_data),UVM_MEDIUM)
                 end
+
+                //tx busy interrupt
+                if(rd.data[3])
+                begin
+                    //if tx busy set wait timeout for next write
+                    current_write_cycle=next_write_delay;
+                end
+
+                //Clear rx_ready interrupt
+                wr=uart_write_seq::type_id::create("wr");
+                wr.addr=UART_REG_INT_CLR;
+                wr.data=32'h0000_0001;
+                wr.start(m_sequencer);
 
                 m_irq_event.reset();
             end
@@ -46,31 +59,29 @@ class uart_flow_seq extends uart_base_seq;
 
     task write_data();
         uart_write_seq wr;
-        forever
         begin
-            //write flow sequence 
-            wr=uart_write_seq::type_id::create("wr");
-            wr.addr=UART_REG_WRITE;
-            wr.data=$urandom_range(0,255);
-            wr.start(m_sequencer);
+            if(current_write_cycle==0)
+            begin
+                //write flow sequence 
+                wr=uart_write_seq::type_id::create("wr");
+                wr.addr=UART_REG_WRITE;
+                wr.data=$urandom_range(0,255);
+                wr.start(m_sequencer);
+            end
+            else
+            begin
+                current_write_cycle=current_write_cycle-1;
+            end
         end
     endtask :write_data
 
     task body();
-        uart_write_seq wr;
-        uart_read_seq rd;
-
-        bit [31:0] status;
-        bit [31:0] int_status;
-        bit [31:0] rx_data;
-
         //setup the UART, control, config, reset, set interrupt mask etc
         setup();
 
         //Do repeated transactions
         repeat (num_ops)
         begin
-            
             handle_irq();
 
             write_data();
