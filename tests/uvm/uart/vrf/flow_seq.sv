@@ -59,9 +59,10 @@ class uart_flow_seq extends uart_base_seq;
                     current_write_cycle=next_write_delay;
 
                     //spawn delay counter
-                    if(!delay_writing)
+                    if(~delay_writing)
                     begin
                         delay_writing=1;
+                        `uvm_info("Delay writes","Delaying writes", UVM_MEDIUM)
                         fork
                             delay_counter();
                         join_none
