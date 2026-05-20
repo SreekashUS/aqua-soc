@@ -23,7 +23,7 @@ module uart_core
 	,input wire valid //valid signal for mmio transaction
 	,output reg ready //backpressure/stall control from uart core
 
-	,output wire intr //uart interrupt
+	,output wire irq //uart interrupt
 
 	,output wire uartTxLine //uart serial out
 	,input wire uartRxLine //uart serial in
@@ -50,12 +50,10 @@ module uart_core
 	reg [DATA_BITS-1:0] reg_read;
 
 	//interrupt control
-	reg [7:0] reg_int_mask;
-	reg [7:0] reg_int_signals;
-	reg [7:0] reg_int_pend;
-	reg irq_pending;
-
-	// wire [DATA_BITS-1:0] uart_rx_data;
+	reg [7:0] reg_intr_mask;
+	wire [7:0] reg_intr_pend;
+	reg [7:0] reg_intr_clr;
+  	reg reg_tx_busy_intr;
 	
 	// additional control/configuration
 	reg reg_start_tx;
@@ -98,8 +96,6 @@ module uart_core
 
 	assign reg_uart_tx_busy=uart_tx_busy|reg_start_tx;
 
-	assign intr=|(reg_int_pend);
-
 	always @(posedge clk,negedge nRst)
 	begin
 		if(~nRst)
@@ -122,11 +118,8 @@ module uart_core
 			config_os<=0;
 			config_baud<=0;
 
-			reg_int_mask<=0;
-			reg_int_signals<=0;
-			reg_int_pend<=0;
-			irq_pending<=0;
-
+			reg_intr_mask<=0;
+			reg_intr_clr<=0;
 			reg_tx_busy_intr<=0;
 
 			//default always ready
@@ -141,19 +134,13 @@ module uart_core
 			reg_reset_tx<=(~reg_reset_tx_1clk)&reg_reset_tx_in;
 			reg_reset_rx<=(~reg_reset_rx_1clk)&reg_reset_rx_in;
 
-			// reg_read<=uart_rx_data;
-			reg_int_signals<={reg_tx_busy_intr,uart_rx_err,uart_rx_ready};
-
-			if(~irq_pending)
-			begin
-				reg_int_pend<=reg_int_mask&reg_int_signals;
-				if(reg_int_pend!=0)
-					irq_pending<=1;
-			end
-
-			//not address dependent control reset
+			//1 cycle pulse clears
 			if(uart_tx_busy)
 				reg_start_tx<=0;
+			if(reg_tx_busy_intr)
+				reg_tx_busy_intr<=0;
+			if(reg_intr_clr!=0)
+				reg_intr_clr<=0;
 
 			if(valid)
 			begin
@@ -171,16 +158,14 @@ module uart_core
 									reg_start_tx<=1;
 								end
 								else
-								begin
 									reg_tx_busy_intr<=1;
-								end
 							end
 						end
 					end
 
 					UART_REG_READ:
 					begin
-						if(reg_enable_rx&reg_int_pend[0])
+						if(reg_enable_rx)
 						begin
 							if(~wr)
 								dataOut<={24'd0,reg_read};
@@ -249,24 +234,25 @@ module uart_core
 					UART_REG_INT_STATUS:
 					begin
 						if(~wr)
-							dataOut<={{(32-(ERR_BITS+1)){1'b0}},reg_int_pend};
+							dataOut<={{(32-(ERR_BITS+1)){1'b0}},reg_intr_pend};
 					end
 
 					UART_REG_INT_MASK:
 					begin
 						if(wr)
-							reg_int_mask<=dataIn[(ERR_BITS+1)-1:0];
+							reg_intr_mask<=dataIn[7:0];
 						else
-							dataOut<={{(32-(ERR_BITS+1)){1'd0}},reg_int_mask};
+							dataOut<={{(32-8){1'b0}},reg_intr_mask};
 					end
 
 					UART_REG_INT_CLR:
 					begin
 						if(wr)
 						begin
-							reg_int_signals<=reg_int_signals&(~dataIn[7:0]);
-							if(reg_int_signals==0)
-								irq_pending<=0;
+							reg_intr_clr<=dataIn[7:0];
+
+							//clear all interrupt holding registers triggered
+							reg_tx_busy_intr<=0;
 						end
 					end
 
@@ -279,6 +265,22 @@ module uart_core
 		end
 	end
 
+
+	irq_block
+	#(
+		.WIDTH(8)
+	)
+	irq_block_0
+	(
+		.clk(clk)
+		,.nRst(nRst)
+      	,.events({{4{1'b0}},reg_tx_busy_intr,uart_rx_err,uart_rx_ready})
+		,.mask(reg_intr_mask)
+		,.clear(reg_intr_clr)
+		,.pending(reg_intr_pend)
+		,.irq(irq)
+	);
+	
 
 	uart_engine
 	#(

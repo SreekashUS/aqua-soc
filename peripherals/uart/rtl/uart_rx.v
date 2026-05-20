@@ -71,6 +71,8 @@ module uart_rx
 			dataRx<=0;
 			uart_rx_ready_1clk<=0;
 			uart_rx_ready_2clk<=0;
+
+			uartRxErr<=0;
 		end
 		else
 		begin
