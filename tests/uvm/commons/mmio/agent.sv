@@ -3,8 +3,8 @@ class mmio_agent extends uvm_agent;
 
 	mmio_drv m_drv;
 	mmio_sqr m_sqr;
-	// mmio_mon m_mon;
-  
+	mmio_mon m_mon;
+
   	`uvm_component_utils(mmio_agent)
 
 	function new(string name="mmio_agent",uvm_component parent);
@@ -19,7 +19,7 @@ class mmio_agent extends uvm_agent;
 
 		m_drv=mmio_drv::type_id::create("m_drv",this);
 		m_sqr=mmio_sqr::type_id::create("m_sqr",this);
-		// m_mon=mmio_mon::type_id::create("m_mon",this);
+		m_mon=mmio_mon::type_id::create("m_mon",this);
 	endfunction :build_phase
 
 	function void connect_phase(uvm_phase phase);

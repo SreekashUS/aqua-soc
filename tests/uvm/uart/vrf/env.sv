@@ -3,10 +3,12 @@ class uart_env extends uvm_env;
     mmio_agent m_mmio_agent;
     irq_sub m_irq_sub;
     uart_irq_mon m_irq_mon;
+    uart_sb m_uart_sb;
 
     //handles from agents
     mmio_sqr m_sqr;
   
+    //event from irq mon
     uvm_event m_irq_event;
 
     `uvm_component_utils(uart_env)
@@ -21,7 +23,8 @@ class uart_env extends uvm_env;
         m_mmio_agent=mmio_agent::type_id::create("m_mmio_agent", this);
         m_irq_sub=irq_sub::type_id::create("m_irq_sub", this);
         m_irq_mon=uart_irq_mon::type_id::create("m_irq_mon",this);
-      
+        m_uart_sb=uart_sb::type_id::create("m_uart_sb",this);
+
         m_irq_event=new("m_irq_event");
       
         uvm_config_db#(uvm_event)::set(this,"m_irq_sub","m_irq_event",m_irq_event);
@@ -32,6 +35,9 @@ class uart_env extends uvm_env;
 
         //connect irq monitor ap to subscriber
         m_irq_mon.ap.connect(m_irq_sub.imp);
+
+        //connect mmio monitor ap to scoreboard imp
+        m_mmio_agent.m_mon.ap.connect(m_uart_sb.imp);
 
         //uart_env.m_mmio_agent and irq have same sequencer
         m_irq_sub.m_sqr=m_mmio_agent.m_sqr;

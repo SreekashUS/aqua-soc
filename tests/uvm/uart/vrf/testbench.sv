@@ -6,12 +6,12 @@ module tb;
     `include "uvm_macros.svh"
 
     logic clk;
-    logic nRst;
+    logic nRst=1;
 
     //mmio_if encapsulated inside
     uart_if vif(clk);
 
-    logic intr;
+    logic irq;
     logic uartTxLine;
     logic uartRxLine;
 
@@ -25,12 +25,12 @@ module tb;
         ,.dataOut(vif.m_mmio_if.rdata)
         ,.wr     (vif.m_mmio_if.wr)
 
-        ,.intr(vif.irq)
+        ,.irq(vif.irq)
         ,.uartTxLine(vif.tx)
         ,.uartRxLine(vif.rx)
 
         ,.valid(vif.m_mmio_if.valid)
-        ,.busy(~vif.m_mmio_if.ready)
+        ,.ready(vif.m_mmio_if.ready)
     );
 
     // clock
@@ -44,14 +44,14 @@ module tb;
     initial 
     begin      
         vif.m_mmio_if.nRst = 0;
-        #5;
+        repeat(5) @(posedge clk);
         vif.m_mmio_if.nRst = 1;
     end
   
     initial
     begin
         //set db config components
-        uvm_config_db#(virtual mmio_if)::set(null, "uvm_test_top.m_env.m_mmio_agent*", "mmio_if", vif.m_mmio_if);
+        uvm_config_db#(virtual mmio_if)::set(null, "*", "mmio_if", vif.m_mmio_if);
         
         //to be used by rx driver and irq monitor
         uvm_config_db#(virtual uart_if)::set(null, "*", "uart_if", vif);

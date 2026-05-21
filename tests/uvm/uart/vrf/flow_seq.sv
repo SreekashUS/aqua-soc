@@ -4,11 +4,9 @@ class uart_flow_seq extends uart_base_seq;
     `uvm_object_utils(uart_flow_seq)
 
     int num_ops=16;
-    int next_write_delay=200;
+    int next_write_delay=400;
     int current_write_cycle=0;
     bit delay_writing=0;
-    // int reset_prob=10;
-    // int cfg_prob=5;
 
     function new(string name="uart_flow_seq");
         super.new(name);
@@ -55,6 +53,7 @@ class uart_flow_seq extends uart_base_seq;
                 //tx busy interrupt
                 if(int_status[3])
                 begin
+                    `uvm_info("Delay writes","Delaying writes", UVM_MEDIUM)
                     //if tx busy set wait timeout for next write
                     current_write_cycle=next_write_delay;
 
@@ -62,7 +61,7 @@ class uart_flow_seq extends uart_base_seq;
                     if(~delay_writing)
                     begin
                         delay_writing=1;
-                        `uvm_info("Delay writes","Delaying writes", UVM_MEDIUM)
+                        
                         fork
                             delay_counter();
                         join_none

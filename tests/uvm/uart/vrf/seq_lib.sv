@@ -67,3 +67,49 @@ class uart_cfg_seq extends uart_base_seq;
         wr.start(m_sequencer);
     endtask
 endclass :uart_cfg_seq
+
+class uart_tx_soft_rst extends uart_base_seq;
+    function new(string name="uart_tx_soft_rst");
+        super.new(name);
+    endfunction
+
+    task body();
+        uart_write_seq wr;
+          
+        wr=uart_write_seq::type_id::create("wr");
+        wr.addr=UART_REG_RESET;
+        wr.data=32'h0000_0001;
+        wr.start(m_sequencer);
+    endtask
+endclass :uart_tx_soft_rst
+
+class uart_rx_soft_rst extends uart_base_seq;
+    function new(string name="uart_rx_soft_rst");
+        super.new(name);
+    endfunction
+
+    task body();
+        uart_write_seq wr;
+          
+        wr=uart_write_seq::type_id::create("wr");
+        wr.addr=UART_REG_RESET;
+        wr.data=32'h0000_0010;
+        wr.start(m_sequencer);
+    endtask
+endclass :uart_rx_soft_rst
+
+class uart_soft_rst extends uart_base_seq;
+    function new(string name="uart_soft_rst");
+        super.new(name);
+    endfunction
+
+    task body();
+        uart_write_seq wr;
+          
+        wr=uart_write_seq::type_id::create("wr");
+        wr.addr=UART_REG_RESET;
+        wr.data=32'h0000_0011;
+        wr.start(m_sequencer);
+    endtask
+endclass :uart_soft_rst
+

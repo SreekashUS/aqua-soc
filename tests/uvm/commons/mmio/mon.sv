@@ -3,6 +3,8 @@ class mmio_mon extends uvm_monitor;
 	virtual mmio_if vif;
 	uvm_analysis_port #(mmio_txn) ap;
 
+  	`uvm_component_utils(mmio_mon)
+  
 	function new(string name="mmio_mon", uvm_component parent);
 		super.new(name,parent);
 		ap=new("ap",this);
@@ -11,7 +13,7 @@ class mmio_mon extends uvm_monitor;
 	function void build_phase(uvm_phase phase);
 		super.build_phase(phase);
 
-		if(!uvm_config_db#()::get(this, "", "mmio_if",vif))
+		if(!uvm_config_db#(virtual mmio_if)::get(this, "", "mmio_if",vif))
 			`uvm_fatal("NO VIF","no vif at mmio monitor")
 	endfunction :build_phase
 
@@ -27,13 +29,19 @@ class mmio_mon extends uvm_monitor;
 				tr=mmio_txn::type_id::create("tr");
 
 				tr.addr=vif.monitor.addr;
-				tr.wdata=vif.monitor.wdata;
-				tr.rdata=vif.monitor.rdata;
-				tr.wr=vif.monitor.wr;
+				tr.is_wr=vif.monitor.wr;
 
+				if(vif.monitor.wr)
+				begin
+					tr.data=vif.monitor.wdata;
+				end
+				else
+				begin
+					@(posedge vif.clk);
+					tr.data=vif.monitor.rdata;
+				end
 				ap.write(tr);
 			end
 		end
 	endtask :run_phase
-
 endclass :mmio_mon
