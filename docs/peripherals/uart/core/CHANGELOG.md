@@ -1,5 +1,32 @@
 # CHANGELOG
 
+## v0.3.0
+### RTL
+#### Added
+1. Added Handshake mechanism on MMIO interface (which extends to AMBA handshakes)
+2. Added uart_engine, separating register decode logic and interrupt generation with 
+uart engine (TX, RX and baud generator).
+#### Modified
+1. Interrupt register now set to 8-bits (might extend in future for more interrupts)
+2. Modified interrupt generation to IRQ block for handling interrupts in a single component. (accumulates events even during irq handling step)
+3. Renamed signal `intr` to `irq` for common signal naming for future components.
+#### Fixed
+1. Fixed UART RX oversampling bug
+
+### UVM
+#### Added (`b78026f`)
+1. Added soft reset sequences to TX, RX
+2. Added MMIO monitor for monitoring transactions for TX writes, RX reads
+3. Added scoreboard (sliding window approach) to verify sent TX bytes against received RX bytes
+in loopback test mode with lossy TX write behaviour (No FIFO).
+4. Added code coverage
+### Modified (`4810b9d`)
+1. Modified flow sequence to handle irq handling and writes separately
+2. Modified flow sequence to handle backpressure with configurable delay cycle timer
+### Fixed (`4158d7c`)
+1. Fixed MMIO driver read 1 cycle delay issue
+
+
 ## v0.2.0
 ### RTL
 #### Fixed
