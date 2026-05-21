@@ -41,7 +41,7 @@ module uart_rx_oversampler
 		end
 		else
 		begin
-			sample_middle_bit<=(first_bit)? ((1<<(baudOversampling+2))-1):((1<<(baudOversampling+1))-1);
+          sample_middle_bit<=(first_bit)? ((1<<(baudOversampling+3))-1):((1<<(baudOversampling+2))-1);
 			
 			if(uart_oversampler_active)
 			begin

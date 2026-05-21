@@ -28,7 +28,7 @@ module baud_generator_int
 			baudClkRx<=0;
 		end
 		else
-			if(rxCounter<(baudDivisor/2)-1)
+          if(rxCounter<(baudDivisor/2)-1)
 				rxCounter<=rxCounter+1;
 			else
 			begin
@@ -46,7 +46,7 @@ module baud_generator_int
 	end
 
 	wire baud_clk_mult;
-	assign baud_clk_mult=txCounter[baudOversampling+1];
+  assign baud_clk_mult=txCounter[baudOversampling+2];
 	assign baudClkTx=baud_clk_mult;
 endmodule
 
